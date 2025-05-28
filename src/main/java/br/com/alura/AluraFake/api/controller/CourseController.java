@@ -1,6 +1,11 @@
-package br.com.alura.AluraFake.course;
+package br.com.alura.AluraFake.api.controller;
 
-import br.com.alura.AluraFake.user.*;
+import br.com.alura.AluraFake.domain.model.Course;
+import br.com.alura.AluraFake.api.dto.response.CourseListItemDTO;
+import br.com.alura.AluraFake.domain.repository.CourseRepository;
+import br.com.alura.AluraFake.api.dto.request.NewCourseDTO;
+import br.com.alura.AluraFake.domain.model.User;
+import br.com.alura.AluraFake.domain.repository.UserRepository;
 import br.com.alura.AluraFake.util.ErrorItemDTO;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,7 +29,7 @@ public class CourseController {
 
     @Transactional
     @PostMapping("/course/new")
-    public ResponseEntity createCourse(@Valid @RequestBody NewCourseDTO newCourse) {
+    public ResponseEntity<?> createCourse(@Valid @RequestBody NewCourseDTO newCourse) {
 
         //Caso implemente o bonus, pegue o instrutor logado
         Optional<User> possibleAuthor = userRepository
@@ -51,7 +56,7 @@ public class CourseController {
     }
 
     @PostMapping("/course/{id}/publish")
-    public ResponseEntity createCourse(@PathVariable("id") Long id) {
+    public ResponseEntity<?> createCourse(@PathVariable("id") Long id) {
         return ResponseEntity.ok().build();
     }
 
