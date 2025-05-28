@@ -5,6 +5,8 @@ import jakarta.persistence.*;
 import org.springframework.util.Assert;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 public class Course {
@@ -21,6 +23,15 @@ public class Course {
     private Status status;
     private LocalDateTime publishedAt;
 
+    @OneToMany(
+            mappedBy      = "course",
+            cascade       = CascadeType.ALL,
+            orphanRemoval = true,
+            fetch         = FetchType.LAZY
+    )
+    @OrderBy("order ASC")
+    private List<Task> tasks = new ArrayList<>();
+
     @Deprecated
     public Course(){}
 
@@ -30,6 +41,11 @@ public class Course {
         this.instructor = instructor;
         this.description = description;
         this.status = Status.BUILDING;
+    }
+
+    public void addTask(Task task) {
+        this.tasks.add(task);
+        task.setCourse(this);
     }
 
     public Long getId() {
@@ -62,5 +78,9 @@ public class Course {
 
     public LocalDateTime getPublishedAt() {
         return publishedAt;
+    }
+
+    public List<Task> getTasks() {
+        return tasks;
     }
 }
