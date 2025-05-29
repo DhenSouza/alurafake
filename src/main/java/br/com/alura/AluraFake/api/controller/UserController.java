@@ -1,5 +1,9 @@
-package br.com.alura.AluraFake.user;
+package br.com.alura.AluraFake.api.controller;
 
+import br.com.alura.AluraFake.api.dto.request.NewUserDTO;
+import br.com.alura.AluraFake.domain.model.User;
+import br.com.alura.AluraFake.api.dto.response.UserListItemDTO;
+import br.com.alura.AluraFake.domain.repository.UserRepository;
 import br.com.alura.AluraFake.util.ErrorItemDTO;
 import jakarta.validation.Valid;
 import org.springframework.http.*;
@@ -19,7 +23,7 @@ public class UserController {
 
     @Transactional
     @PostMapping("/user/new")
-    public ResponseEntity newStudent(@RequestBody @Valid NewUserDTO newUser) {
+    public ResponseEntity<?> newStudent(@RequestBody @Valid NewUserDTO newUser) {
         if(userRepository.existsByEmail(newUser.getEmail())) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new ErrorItemDTO("email", "Email já cadastrado no sistema"));
