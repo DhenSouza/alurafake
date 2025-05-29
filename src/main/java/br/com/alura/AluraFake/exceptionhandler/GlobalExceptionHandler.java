@@ -32,8 +32,6 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @Value("${api.error.base-uri:https://api.seusite.com/erros}")
     private String errorBaseUri;
 
-
-
     @Override
     protected ResponseEntity<Object> handleMethodArgumentNotValid(
             MethodArgumentNotValidException ex,
@@ -42,212 +40,248 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             WebRequest request) {
 
         List<ErrorField> fieldErrors = new ArrayList<>();
-
-        for (FieldError error : ex.getBindingResult().getFieldErrors()) {
-            fieldErrors.add(new ErrorField(error.getField(), error.getDefaultMessage()));
-        }
-
-        ex.getBindingResult().getGlobalErrors().forEach(error -> {
-            fieldErrors.add(new ErrorField(error.getObjectName(), error.getDefaultMessage()));
-        });
+        ex.getBindingResult().getFieldErrors().forEach(error ->
+                fieldErrors.add(new ErrorField(error.getField(), error.getDefaultMessage()))
+        );
+        ex.getBindingResult().getGlobalErrors().forEach(error ->
+                fieldErrors.add(new ErrorField(error.getObjectName(), error.getDefaultMessage()))
+        );
 
         ErrorResponse errorResponse = new ErrorResponse(
                 HttpStatus.BAD_REQUEST.value(),
-                errorBaseUri + ProblemType.GENERIC_MESSAGE_NOT_READABLE.getPath(),
-                ProblemType.INVALID_DATA.getMessage(),
+                errorBaseUri + ProblemType.DEFAULT_USER_MESSAGE_VALIDATION.getPath(),
                 ProblemType.DEFAULT_USER_MESSAGE_VALIDATION.getTitle(),
+                ProblemType.DEFAULT_USER_MESSAGE_VALIDATION.getMessage(),
                 ((ServletWebRequest) request).getRequest().getRequestURI(),
                 ProblemType.DEFAULT_USER_MESSAGE_VALIDATION.getMessage(),
                 fieldErrors
         );
-
         return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
     }
 
     @Override
     protected ResponseEntity<Object> handleHttpMessageNotReadable(
-            HttpMessageNotReadableException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+            HttpMessageNotReadableException ex,
+            HttpHeaders headers,
+            HttpStatusCode status,
+            WebRequest request) {
 
-        Throwable mostSpecificCause = ex.getMostSpecificCause();
         String requestUri = ((ServletWebRequest) request).getRequest().getRequestURI();
+        Throwable cause = ex.getMostSpecificCause();
 
-        if (mostSpecificCause instanceof OptionalInvalidException oie) {
-            return buildResponseForOptionalInvalidCause(oie, requestUri);
-        } else if (mostSpecificCause instanceof JsonParseException jpe) {
-            return buildResponseForJsonParseCause(jpe, requestUri, headers, status);
-        } else if (mostSpecificCause instanceof InvalidFormatException ife) {
-            return buildResponseForInvalidFormatCause(ife, requestUri, headers, status);
-        } else if (mostSpecificCause instanceof IllegalArgumentException iae) {
-            return buildResponseForIllegalArgumentCause(iae, requestUri, status);
+        if (cause instanceof OptionalInvalidException oie) {
+            return buildResponseForOptionalInvalid(oie, requestUri);
+        } else if (cause instanceof JsonParseException jpe) {
+            return buildResponseForJsonParse(jpe, requestUri, headers, status);
+        } else if (cause instanceof InvalidFormatException ife) {
+            return buildResponseForInvalidFormat(ife, requestUri, headers, status);
+        } else if (cause instanceof IllegalArgumentException iae) {
+            return buildResponseForIllegalArgument(iae, requestUri, status);
         } else {
-            return buildFallbackResponseForHttpMessageNotReadable(ex, requestUri, headers, status);
+            return buildFallbackForNotReadable(ex, requestUri, headers, status);
         }
     }
 
     @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleResourceNotFoundException(
-            ResourceNotFoundException ex, WebRequest request) {
+    public ResponseEntity<ErrorResponse> handleResourceNotFound(
+            ResourceNotFoundException ex,
+            WebRequest request) {
+
+        String uri = ((ServletWebRequest) request).getRequest().getRequestURI();
         ErrorResponse errorResponse = new ErrorResponse(
                 HttpStatus.NOT_FOUND.value(),
-                errorBaseUri + "/recurso-nao-encontrado",
+                errorBaseUri + ProblemType.RESOURCE_NOT_FOUND.getPath(),
                 ProblemType.RESOURCE_NOT_FOUND.getTitle(),
                 ex.getMessage(),
-                ((ServletWebRequest)request).getRequest().getRequestURI(),
-                ex.getMessage());
+                uri,
+                ProblemType.RESOURCE_NOT_FOUND.getMessage()
+        );
         return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND);
     }
 
     @ExceptionHandler(OptionalInvalidException.class)
-    public ResponseEntity<ErrorResponse> handleTopLevelOptionalInvalidException(
+    public ResponseEntity<ErrorResponse> handleOptionalInvalid(
             OptionalInvalidException ex,
             WebRequest request) {
-        logger.warn("Handler OptionalInvalidException: {}", ex);
-        String requestUri = ((ServletWebRequest) request).getRequest().getRequestURI();
+
+        String uri = ((ServletWebRequest) request).getRequest().getRequestURI();
         ErrorResponse errorResponse = new ErrorResponse(
                 HttpStatus.BAD_REQUEST.value(),
-                errorBaseUri + ProblemType.MESSAGE_NOT_READABLE.getTitle(),
-                ProblemType.MESSAGE_NOT_READABLE.getMessage(),
+                errorBaseUri + ProblemType.MESSAGE_NOT_READABLE.getPath(),
+                ProblemType.MESSAGE_NOT_READABLE.getTitle(),
                 ex.getMessage(),
-                requestUri,
-                ex.getMessage()
+                uri,
+                ProblemType.MESSAGE_NOT_READABLE.getMessage()
         );
         return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(InvalidCourseTaskOperationException.class)
-    public ResponseEntity<ErrorResponse> handleInvalidCourseTaskOperationException(
-            InvalidCourseTaskOperationException ex, WebRequest request) {
+    public ResponseEntity<ErrorResponse> handleInvalidCourseTask(
+            InvalidCourseTaskOperationException ex,
+            WebRequest request) {
+
+        String uri = ((ServletWebRequest) request).getRequest().getRequestURI();
         ErrorResponse errorResponse = new ErrorResponse(
                 HttpStatus.BAD_REQUEST.value(),
-                errorBaseUri + "/operacao-invalida",
+                errorBaseUri + ProblemType.INVALID_OPERATION.getPath(),
                 ProblemType.INVALID_OPERATION.getTitle(),
                 ex.getMessage(),
-                ((ServletWebRequest)request).getRequest().getRequestURI(),
-                ex.getMessage());
+                uri,
+                ProblemType.INVALID_OPERATION.getMessage()
+        );
         return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
-    public ResponseEntity<ErrorResponse> handleConstraintViolationException(
-            ConstraintViolationException ex, WebRequest request) {
+    public ResponseEntity<ErrorResponse> handleConstraintViolation(
+            ConstraintViolationException ex,
+            WebRequest request) {
+
         List<ErrorField> fieldErrors = ex.getConstraintViolations()
                 .stream()
                 .map(cv -> {
-                    String propertyPath = cv.getPropertyPath().toString();
-                    String fieldName = propertyPath.contains(".") ? propertyPath.substring(propertyPath.lastIndexOf('.') + 1) : propertyPath;
-                    return new ErrorField(fieldName, cv.getMessage());
+                    String path = cv.getPropertyPath().toString();
+                    String field = path.contains(".")
+                            ? path.substring(path.lastIndexOf('.') + 1)
+                            : path;
+                    return new ErrorField(field, cv.getMessage());
                 })
                 .collect(Collectors.toList());
 
+        String uri = ((ServletWebRequest) request).getRequest().getRequestURI();
         ErrorResponse errorResponse = new ErrorResponse(
                 HttpStatus.BAD_REQUEST.value(),
-                errorBaseUri + "/dados-invalidos",
+                errorBaseUri + ProblemType.INVALID_DATA.getPath(),
                 ProblemType.INVALID_DATA.getTitle(),
-                ProblemType.DEFAULT_USER_MESSAGE_VALIDATION.getTitle(),
-                ((ServletWebRequest)request).getRequest().getRequestURI(),
+                ProblemType.INVALID_DATA.getMessage(),
+                uri,
                 ProblemType.DEFAULT_USER_MESSAGE_VALIDATION.getMessage(),
-                fieldErrors);
+                fieldErrors
+        );
         return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<ErrorResponse> handleIllegalArgumentException(
-            IllegalArgumentException ex, WebRequest request) {
+    public ResponseEntity<ErrorResponse> handleIllegalArgument(
+            IllegalArgumentException ex,
+            WebRequest request) {
+
+        String uri = ((ServletWebRequest) request).getRequest().getRequestURI();
         ErrorResponse errorResponse = new ErrorResponse(
                 HttpStatus.BAD_REQUEST.value(),
-                errorBaseUri + "/argumento-invalido",
-                ProblemType.INVALID_OPERATION.getTitle(),
+                errorBaseUri + ProblemType.INVALID_DATA.getPath(),
+                ProblemType.INVALID_DATA.getTitle(),
                 ex.getMessage(),
-                ((ServletWebRequest)request).getRequest().getRequestURI(),
-                ex.getMessage());
+                uri,
+                ProblemType.INVALID_DATA.getMessage()
+        );
         return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handleGlobalException(Exception ex, WebRequest request) {
-        logger.error("Exceção não esperada capturada pelo GlobalExceptionHandler: ", ex);
+    public ResponseEntity<ErrorResponse> handleUnexpected(
+            Exception ex,
+            WebRequest request) {
 
+        logger.error("Erro inesperado capturado: ", ex);
+        String uri = ((ServletWebRequest) request).getRequest().getRequestURI();
         ErrorResponse errorResponse = new ErrorResponse(
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                errorBaseUri + "/erro-de-sistema",
+                errorBaseUri + ProblemType.UNEXPECTED_ERROR.getPath(),
                 ProblemType.UNEXPECTED_ERROR.getTitle(),
-                "Ocorreu um erro interno inesperado no sistema. Tente novamente mais tarde.",
-                ((ServletWebRequest)request).getRequest().getRequestURI(),
-                "Ocorreu um erro interno inesperado no sistema. Tente novamente mais tarde ou contate o suporte."
+                ProblemType.UNEXPECTED_ERROR.getMessage(),
+                uri,
+                ProblemType.UNEXPECTED_ERROR.getMessage()
         );
         return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
-    private ResponseEntity<Object> buildResponseForOptionalInvalidCause(
-            OptionalInvalidException ex, String requestUri) {
+    // Auxiliares para handleHttpMessageNotReadable
+
+    private ResponseEntity<Object> buildResponseForOptionalInvalid(
+            OptionalInvalidException ex,
+            String requestUri) {
+
         ErrorResponse errorResponse = new ErrorResponse(
                 HttpStatus.BAD_REQUEST.value(),
-                errorBaseUri + ProblemType.INVALID_DATA.getTitle(),
-                ProblemType.INVALID_DATA.getMessage(),
+                errorBaseUri + ProblemType.INVALID_DATA.getPath(),
+                ProblemType.INVALID_DATA.getTitle(),
                 ex.getMessage(),
                 requestUri,
-                ex.getMessage(),
-                null
+                ProblemType.INVALID_DATA.getMessage()
         );
         return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
     }
 
-    private ResponseEntity<Object> buildResponseForJsonParseCause(
-            JsonParseException ex, String requestUri, HttpHeaders headers, HttpStatusCode originalStatus) {
+    private ResponseEntity<Object> buildResponseForJsonParse(
+            JsonParseException ex,
+            String requestUri,
+            HttpHeaders headers,
+            HttpStatusCode status) {
+
         ParsedExceptionDetails details = handleJsonParseException(ex);
         ErrorResponse errorResponse = new ErrorResponse(
-                originalStatus.value(),
-                errorBaseUri + ProblemType.TYPE_INVALID_REQUEST_FORMAT.getTitle(),
+                status.value(),
+                errorBaseUri + ProblemType.TYPE_INVALID_REQUEST_FORMAT.getPath(),
                 ProblemType.TYPE_INVALID_REQUEST_FORMAT.getTitle(),
                 details.detail(),
                 requestUri,
                 ProblemType.TYPE_INVALID_REQUEST_FORMAT.getMessage(),
                 details.field()
         );
-        return new ResponseEntity<>(errorResponse, headers, originalStatus);
+        return new ResponseEntity<>(errorResponse, headers, status);
     }
 
-    private ResponseEntity<Object> buildResponseForInvalidFormatCause(
-            InvalidFormatException ex, String requestUri, HttpHeaders headers, HttpStatusCode originalStatus) {
+    private ResponseEntity<Object> buildResponseForInvalidFormat(
+            InvalidFormatException ex,
+            String requestUri,
+            HttpHeaders headers,
+            HttpStatusCode status) {
+
         ParsedExceptionDetails details = handleInvalidFormatException(ex);
         ErrorResponse errorResponse = new ErrorResponse(
-                originalStatus.value(),
-                errorBaseUri + ProblemType.TYPE_INVALID_REQUEST_FORMAT.getTitle(),
+                status.value(),
+                errorBaseUri + ProblemType.TYPE_INVALID_REQUEST_FORMAT.getPath(),
                 ProblemType.TYPE_INVALID_REQUEST_FORMAT.getTitle(),
                 details.detail(),
                 requestUri,
                 ProblemType.TYPE_INVALID_REQUEST_FORMAT.getMessage(),
                 details.field()
         );
-        return new ResponseEntity<>(errorResponse, headers, originalStatus);
+        return new ResponseEntity<>(errorResponse, headers, status);
     }
 
-    private ResponseEntity<Object> buildResponseForIllegalArgumentCause(
-            IllegalArgumentException ex, String requestUri, HttpStatusCode originalStatus) {
+    private ResponseEntity<Object> buildResponseForIllegalArgument(
+            IllegalArgumentException ex,
+            String requestUri,
+            HttpStatusCode status) {
+
         ErrorResponse errorResponse = new ErrorResponse(
                 HttpStatus.BAD_REQUEST.value(),
-                errorBaseUri + "/parametro-invalido",
-                ProblemType.DEFAULT_USER_MESSAGE_VALIDATION.getTitle(),
+                errorBaseUri + ProblemType.INVALID_DATA.getPath(),
+                ProblemType.INVALID_DATA.getTitle(),
                 ex.getMessage(),
                 requestUri,
-                ex.getMessage(),
-                null
+                ProblemType.INVALID_DATA.getMessage()
         );
         return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
     }
 
-    private ResponseEntity<Object> buildFallbackResponseForHttpMessageNotReadable(
-            HttpMessageNotReadableException ex, String requestUri, HttpHeaders headers, HttpStatusCode status) {
-        String fallbackDetail = "O corpo da requisição está inválido, ilegível ou ocorreu um problema durante o processamento inicial.";
+    private ResponseEntity<Object> buildFallbackForNotReadable(
+            HttpMessageNotReadableException ex,
+            String requestUri,
+            HttpHeaders headers,
+            HttpStatusCode status) {
 
+        String detail = "O corpo da requisição está inválido, ilegível ou ocorreu um problema durante o processamento inicial.";
         ErrorResponse errorResponse = new ErrorResponse(
                 status.value(),
                 errorBaseUri + ProblemType.GENERIC_MESSAGE_NOT_READABLE.getPath(),
                 ProblemType.GENERIC_MESSAGE_NOT_READABLE.getTitle(),
-                fallbackDetail,
+                detail,
                 requestUri,
-                ProblemType.GENERIC_MESSAGE_NOT_READABLE.getMessage(),
-                null
+                ProblemType.GENERIC_MESSAGE_NOT_READABLE.getMessage()
         );
         return new ResponseEntity<>(errorResponse, headers, status);
     }

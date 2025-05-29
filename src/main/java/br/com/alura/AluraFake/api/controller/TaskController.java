@@ -20,6 +20,16 @@ public class TaskController {
         this.useCaseFactory = useCaseFactory;
     }
 
+    /* TODO
+     * Ajustei o corpo da requisição em um único endpoint para aproveitar o enum
+     * e centralizar a lógica de criação de Tasks com suas responsabilidades:
+     *   1. Passar o tipo de tarefa via enum.
+     *   2. Usar uma factory para automatizar a instância de cada Task.
+     *   3. Aplicar o padrão Strategy para definir comportamentos específicos de cada tipo de Task.
+     *
+     * Dessa forma, não será necessário criar um endpoint exclusivo para cada nova Task:
+     * basta adicionar o caso de uso e registrar a Task correspondente no enum.
+     */
     @PostMapping("/new")
     public ResponseEntity<?> createNewTask(@Valid @RequestBody TaskCreationRequest request) {
         CreateTaskUseCase<TaskCreationRequest> useCase = useCaseFactory.getUseCase(request.type());
