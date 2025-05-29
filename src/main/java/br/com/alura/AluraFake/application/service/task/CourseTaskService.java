@@ -4,6 +4,8 @@ import br.com.alura.AluraFake.domain.model.Course;
 import br.com.alura.AluraFake.domain.model.Task;
 import br.com.alura.AluraFake.domain.repository.CourseRepository;
 import br.com.alura.AluraFake.domain.repository.TaskRepository;
+import br.com.alura.AluraFake.exceptionhandler.InvalidCourseTaskOperationException;
+import br.com.alura.AluraFake.exceptionhandler.ResourceNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,12 +25,12 @@ public class CourseTaskService {
     @Transactional
     public Course addTaskToCourseAtPosition(Long courseId, Task newTask, int position) {
         Course course = courseRepository.findById(courseId)
-                .orElseThrow(() -> new IllegalArgumentException("Curso não encontrado com ID: " + courseId));
+                .orElseThrow(() -> new ResourceNotFoundException("Curso não encontrado com ID: " + courseId));
 
         List<Task> existingTasks = course.getTasks();
 
         if (position < 1 || position > existingTasks.size() + 1) {
-            throw new IllegalArgumentException(
+            throw new InvalidCourseTaskOperationException(
                     "Ordem de tarefa inválida. A ordem deve ser contínua e estar entre 1 e " + (existingTasks.size() + 1) + "."
             );
         }
@@ -51,13 +53,13 @@ public class CourseTaskService {
     @Transactional
     public Course removeTaskFromCourse(Long courseId, Long taskId) {
         Course course = courseRepository.findById(courseId)
-                .orElseThrow(() -> new IllegalArgumentException("Curso não encontrado com ID: " + courseId));
+                .orElseThrow(() -> new ResourceNotFoundException("Curso não encontrado com ID: " + courseId));
 
         Task taskToRemove = taskRepository.findById(taskId)
-                .orElseThrow(() -> new IllegalArgumentException("Tarefa não encontrada com ID: " + taskId));
+                .orElseThrow(() -> new ResourceNotFoundException("Tarefa não encontrada com ID: " + taskId));
 
         if (!taskToRemove.getCourse().getId().equals(courseId)) {
-            throw new IllegalArgumentException("A tarefa não pertence ao curso especificado.");
+            throw new InvalidCourseTaskOperationException("A tarefa não pertence ao curso especificado.");
         }
 
         course.removeTask(taskToRemove);
