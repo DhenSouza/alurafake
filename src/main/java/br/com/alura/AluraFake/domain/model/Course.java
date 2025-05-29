@@ -48,6 +48,11 @@ public class Course {
         task.setCourse(this);
     }
 
+    public void removeTask(Task task) {
+        this.tasks.remove(task);
+        task.setCourse(null);
+    }
+
     public Long getId() {
         return id;
     }
