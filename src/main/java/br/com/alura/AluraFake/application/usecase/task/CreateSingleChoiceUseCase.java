@@ -13,41 +13,14 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
-public class CreateSingleChoiceUseCase implements CreateTaskUseCase<SingleChoiceTaskCreationRequest> {
-
-    private final CourseTaskService courseTaskService;
+public class CreateSingleChoiceUseCase extends AbstractCreateChoiceTaskUseCase<SingleChoiceTaskCreationRequest> {
 
     public CreateSingleChoiceUseCase(CourseTaskService courseTaskService) {
-        this.courseTaskService = courseTaskService;
+        super(courseTaskService);
     }
 
     @Override
     public Type getType() {
         return Type.SINGLE_CHOICE;
-    }
-
-    @Override
-    @Transactional
-    public void execute(SingleChoiceTaskCreationRequest request) {
-        Task newSingleChoiceTask = Task.builder()
-                .statement(request.statement())
-                .order(request.order())
-                .build();
-
-        List<TaskOption> taskOptions = request.options().stream()
-                .map(optionRequest -> TaskOption.builder()
-                        .optionText(optionRequest.option())
-                        .isCorrect(optionRequest.isCorrect())
-                        .build())
-                .toList();
-
-        taskOptions.forEach(newSingleChoiceTask::addOption);
-
-        courseTaskService.addTaskToCourseAtPosition(
-                request.courseId(),
-                newSingleChoiceTask,
-                request.order()
-        );
-
     }
 }

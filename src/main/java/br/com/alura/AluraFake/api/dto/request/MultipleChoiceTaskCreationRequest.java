@@ -26,11 +26,8 @@ public record MultipleChoiceTaskCreationRequest(
         @NotNull
         Type type,
 
-        @NotEmpty
-        @Size(min = 2, max = 5)
-        @Valid
         List<ChoiceOptionRequest> options
-) implements TaskCreationRequest {
+) implements ChoiceTaskCreationRequest  {
         public MultipleChoiceTaskCreationRequest {
                 if (options != null && options.stream().noneMatch(ChoiceOptionRequest::isCorrect)) {
                         throw new IllegalArgumentException("Pelo menos uma alternativa correta é necessária para Multiple Choice.");

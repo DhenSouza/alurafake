@@ -24,11 +24,8 @@ public record SingleChoiceTaskCreationRequest(
         @NotNull
         Type type,
 
-        @NotEmpty
-        @Size(min = 2, max = 5)
-        @Valid
         List<ChoiceOptionRequest> options
-) implements TaskCreationRequest {
+) implements ChoiceTaskCreationRequest  {
         public SingleChoiceTaskCreationRequest {
                 if (options != null && options.stream().filter(ChoiceOptionRequest::isCorrect).count() != 1) {
                         throw new IllegalArgumentException("Uma e apenas uma alternativa correta é permitida para Single Choice.");
