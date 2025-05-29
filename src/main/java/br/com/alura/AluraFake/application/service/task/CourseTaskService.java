@@ -22,40 +22,29 @@ public class CourseTaskService {
 
     @Transactional
     public Course addTaskToCourseAtPosition(Long courseId, Task newTask, int position) {
-        // 1. Carrega o curso do banco de dados
         Course course = courseRepository.findById(courseId)
                 .orElseThrow(() -> new IllegalArgumentException("Curso não encontrado com ID: " + courseId));
 
-        // As tarefas já vêm ordenadas do banco de dados devido ao @OrderBy na entidade Course
         List<Task> existingTasks = course.getTasks();
 
-        // 2. Valida a posição da nova tarefa para garantir continuidade
-        // Se a posição não for válida, lança uma exceção.
         if (position < 1 || position > existingTasks.size() + 1) {
             throw new IllegalArgumentException(
                     "Ordem de tarefa inválida. A ordem deve ser contínua e estar entre 1 e " + (existingTasks.size() + 1) + "."
             );
         }
 
-        // 3. Desloca as ordens das tarefas existentes (se necessário)
-        // Para cada tarefa existente com ordem igual ou superior à nova posição,
-        // incrementa sua ordem em 1. O JPA rastreia essas mudanças.
         for (Task existingTask : existingTasks) {
             if (existingTask.getOrder() >= position) {
                 existingTask.setOrder(existingTask.getOrder() + 1);
             }
         }
 
-        // 4. Configura a nova tarefa
-        // Define a ordem e associa a nova tarefa a este curso.
         newTask.setOrder(position);
-        newTask.setCourse(course); // Vincula a nova Task ao Course
+        newTask.setCourse(course);
 
-        // 5. Adiciona a nova tarefa à coleção DO CURSO E A SALVA DIRETAMENTE
         course.addTask(newTask);
 
         taskRepository.save(newTask);
-
         return course;
     }
 

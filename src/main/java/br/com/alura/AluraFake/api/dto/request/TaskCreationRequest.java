@@ -25,7 +25,7 @@ public interface TaskCreationRequest {
     @NotNull
     String statement();
 
-    @Min(value = 1, message = "{task.order.min}")
+    @Min(value = 1)
     @NotNull
     Integer order();
 
