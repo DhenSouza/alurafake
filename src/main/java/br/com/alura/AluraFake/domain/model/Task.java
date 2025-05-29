@@ -3,10 +3,14 @@ package br.com.alura.AluraFake.domain.model;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Entity
-@Table(name = "Task")
 @NoArgsConstructor
 @AllArgsConstructor
+@Getter
+@Setter
 @Builder
 public class Task {
 
@@ -24,35 +28,18 @@ public class Task {
     @JoinColumn(name = "course_id", nullable = false)
     private Course course;
 
-    public Long getId() {
-        return id;
+    @OneToMany(mappedBy = "task", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @Builder.Default
+    private List<TaskOption> options = new ArrayList<>();
+
+    public void addOption(TaskOption option) {
+        this.options.add(option);
+        option.setTask(this);
     }
 
-    public void setId(Long id) {
-        this.id = id;
+    public void removeOption(TaskOption option) {
+        this.options.remove(option);
+        option.setTask(null);
     }
 
-    public String getStatement() {
-        return statement;
-    }
-
-    public void setStatement(String statement) {
-        this.statement = statement;
-    }
-
-    public Integer getOrder() {
-        return order;
-    }
-
-    public void setOrder(Integer order) {
-        this.order = order;
-    }
-
-    public Course getCourse() {
-        return course;
-    }
-
-    public void setCourse(Course course) {
-        this.course = course;
-    }
 }
