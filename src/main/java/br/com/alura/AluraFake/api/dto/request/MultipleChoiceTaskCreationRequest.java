@@ -26,11 +26,20 @@ public record MultipleChoiceTaskCreationRequest(
         @NotNull
         Type type,
 
+        @NotEmpty
+        @Size(min = 3, max = 5)
         List<ChoiceOptionRequest> options
 ) implements ChoiceTaskCreationRequest  {
         public MultipleChoiceTaskCreationRequest {
-                if (options != null && options.stream().noneMatch(ChoiceOptionRequest::isCorrect)) {
-                        throw new IllegalArgumentException("Pelo menos uma alternativa correta é necessária para Multiple Choice.");
+                if (options == null) {
+                        throw new IllegalArgumentException("A lista de opções não pode ser nula para múltipla escolha.");
+                }
+
+                long correctCount = options.stream().filter(ChoiceOptionRequest::isCorrect).count();
+                long incorrectCount = options.size() - correctCount;
+
+                if (correctCount < 2 || incorrectCount < 1) {
+                        throw new IllegalArgumentException("São necessárias duas ou mais alternativas corretas e ao menos uma alternativa incorreta para Multiple Choice.");
                 }
 
                 TaskOptionValidator.validateUniqueAndStatementComparison(statement, options);

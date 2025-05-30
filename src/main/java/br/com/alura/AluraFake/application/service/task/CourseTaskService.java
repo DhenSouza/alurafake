@@ -11,7 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
-@Service // Marca como um componente de serviço Spring
+@Service
 public class CourseTaskService {
 
     private final CourseRepository courseRepository;
@@ -58,8 +58,13 @@ public class CourseTaskService {
         Task taskToRemove = taskRepository.findById(taskId)
                 .orElseThrow(() -> new ResourceNotFoundException("Tarefa não encontrada com ID: " + taskId));
 
-        if (!taskToRemove.getCourse().getId().equals(courseId)) {
-            throw new InvalidCourseTaskOperationException("A tarefa não pertence ao curso especificado.");
+        if (taskToRemove.getCourse() == null || !taskToRemove.getCourse().getId().equals(courseId)) {
+            String mensagemDeErroFormatada = String.format(
+                    "A tarefa com ID %d não pertence ao curso com ID: %d",
+                    taskToRemove.getId(),
+                    courseId
+            );
+            throw new InvalidCourseTaskOperationException(mensagemDeErroFormatada);
         }
 
         course.removeTask(taskToRemove);
