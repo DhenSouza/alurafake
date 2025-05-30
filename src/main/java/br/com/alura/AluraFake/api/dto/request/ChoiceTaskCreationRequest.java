@@ -8,8 +8,6 @@ import java.util.List;
 
 public interface ChoiceTaskCreationRequest extends TaskCreationRequest {
 
-    @NotEmpty
-    @Size(min = 2, max = 5)
     @Valid
     List<ChoiceOptionRequest> options();
 }

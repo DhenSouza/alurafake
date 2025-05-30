@@ -1,10 +1,7 @@
 package br.com.alura.AluraFake.task.unitTest.controller;
 
 import br.com.alura.AluraFake.api.controller.TaskController;
-import br.com.alura.AluraFake.api.dto.request.ChoiceOptionRequest;
-import br.com.alura.AluraFake.api.dto.request.OpenTextTaskCreationRequest;
-import br.com.alura.AluraFake.api.dto.request.SingleChoiceTaskCreationRequest;
-import br.com.alura.AluraFake.api.dto.request.TaskCreationRequest;
+import br.com.alura.AluraFake.api.dto.request.*;
 import br.com.alura.AluraFake.application.factory.TaskUseCaseFactory;
 import br.com.alura.AluraFake.application.interfaces.CreateTaskUseCase;
 import br.com.alura.AluraFake.domain.enumeration.Type;
@@ -79,27 +76,15 @@ public class TaskControllerTest {
         );
     }
 
-    private List<ChoiceOptionRequest> defaultSingleChoiceOptionsInvalidSingleChoice() {
-        return List.of(
-                new ChoiceOptionRequest("Opção A", true),
-                new ChoiceOptionRequest("Opção B", false)
-        );
-    }
 
-    private List<ChoiceOptionRequest> multipleChoiceOptions_NoIncorrect() {
+    private List<ChoiceOptionRequest> defaultMultipleChoiceOptionsValid() {
         return List.of(
                 new ChoiceOptionRequest("Opção Múltipla A (Correta)", true),
                 new ChoiceOptionRequest("Opção Múltipla B (Correta)", true),
-                new ChoiceOptionRequest("Opção Múltipla C (Correta)", true)
+                new ChoiceOptionRequest("Opção Múltipla C (Incorreta)", false)
         );
     }
 
-    private List<ChoiceOptionRequest> multipleChoiceOptions_TooFewOptions() {
-        return List.of(
-                new ChoiceOptionRequest("Opção Múltipla A (Correta)", true),
-                new ChoiceOptionRequest("Opção Múltipla B (Correta)", true)
-        );
-    }
 
     @Test
     @DisplayName("POST /task/new com payload válido retorna 200 OK e success=true com o tipo OPEN_TEXT")
@@ -120,10 +105,10 @@ public class TaskControllerTest {
         verify(useCaseFactory).getUseCase(eq(Type.OPEN_TEXT));
         verify(createTaskUseCaseMock).execute(captor.capture());
 
-        OpenTextTaskCreationRequest captured = (OpenTextTaskCreationRequest) captor.getValue();
-        assertThat(captured.courseId()).isEqualTo(1L);
-        assertThat(captured.statement()).isEqualTo("Descreva o padrão Strategy.");
-        assertThat(captured.type()).isEqualTo(Type.OPEN_TEXT);
+        OpenTextTaskCreationRequest openTextCaptured = (OpenTextTaskCreationRequest) captor.getValue();
+        assertThat(openTextCaptured.courseId()).isEqualTo(1L);
+        assertThat(openTextCaptured.statement()).isEqualTo("Descreva o padrão Strategy.");
+        assertThat(openTextCaptured.type()).isEqualTo(Type.OPEN_TEXT);
     }
 
     @ParameterizedTest
@@ -217,76 +202,338 @@ public class TaskControllerTest {
         mockMvc.perform(post("/task/new")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(singleChoiceRequest)))
-                .andExpect(status().isOk())                                // verifica 200 OK
-                .andExpect(jsonPath("$.success").value(true));            // verifica success=true
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
 
         // Verify
         verify(useCaseFactory).getUseCase(eq(Type.SINGLE_CHOICE));
         verify(createTaskUseCaseMock).execute(captor.capture());
 
-        SingleChoiceTaskCreationRequest captured =
+        SingleChoiceTaskCreationRequest singleChoiceCaptured =
                 (SingleChoiceTaskCreationRequest) captor.getValue();
 
-        assertThat(captured.courseId()).isEqualTo(2L);
-        assertThat(captured.statement()).isEqualTo("Qual é a capital da França?");
-        assertThat(captured.order()).isEqualTo(1);
-        assertThat(captured.type()).isEqualTo(Type.SINGLE_CHOICE);
+        assertThat(singleChoiceCaptured.courseId()).isEqualTo(2L);
+        assertThat(singleChoiceCaptured.statement()).isEqualTo("Qual é a capital da França?");
+        assertThat(singleChoiceCaptured.order()).isEqualTo(1);
+        assertThat(singleChoiceCaptured.type()).isEqualTo(Type.SINGLE_CHOICE);
 
-        assertThat(captured.options()).hasSize(3);
-        assertThat(captured.options().get(0).option()).isEqualTo("Opção A (Correta)");
-        assertThat(captured.options().get(0).isCorrect()).isTrue();
+        assertThat(singleChoiceCaptured.options()).hasSize(3);
+        assertThat(singleChoiceCaptured.options().get(0).option()).isEqualTo("Opção A (Correta)");
+        assertThat(singleChoiceCaptured.options().get(0).isCorrect()).isTrue();
     }
 
     @Test
-    @DisplayName("POST /task/new com SINGLE_CHOICE e nenhuma opção correta retorna 400 Bad Request")
-    void createNewTask_whenSingleChoiceHasNoCorrectOption_shouldReturnBadRequest() throws Exception {
+    @DisplayName("POST /task/new com SINGLE_CHOICE e NENHUMA opção correta (regra de negócio) retorna 400 Bad Request")
+    void createNewTask_whenSingleChoiceHasZeroCorrectOptions_RuleViolation_shouldReturnBadRequest() throws Exception {
         // Arrange
-        SingleChoiceTaskCreationRequest invalidSingleChoiceRequest = new SingleChoiceTaskCreationRequest(
-                null,
-                "Qual opção está correta aqui?",
-                1,
-                Type.SINGLE_CHOICE,
-                defaultSingleChoiceOptionsInvalidSingleChoice()
-        );
+        String invalidJsonPayload = """
+        {
+            "courseId": 3,
+            "statement": "Qual opção está correta aqui (nenhuma)?",
+            "order": 1,
+            "type": "SINGLE_CHOICE",
+            "options": [
+                {"option": "Opção X", "isCorrect": false},
+                {"option": "Opção Y", "isCorrect": false},
+                {"option": "Opção Z", "isCorrect": false}
+            ]
+        }
+        """;
 
-        String expectedDetailMessageFromException = "Um ou mais campos estão inválidos. Faça o preenchimento correto e tente novamente.";
+        String expectedDetailMessageFromConstructorException = "Uma e apenas uma alternativa correta é permitida para Single Choice.";
 
         // Act
         ResultActions resultActions = mockMvc.perform(post("/task/new")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(invalidSingleChoiceRequest)));
+                .content(invalidJsonPayload));
 
-        String expectedTypeUri = errorBaseUri + ProblemType.DEFAULT_USER_MESSAGE_VALIDATION.getPath();
+        // Assert
+        String expectedTypeUri = errorBaseUri + ProblemType.INVALID_DATA.getPath();
 
         resultActions
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(HttpStatus.BAD_REQUEST.value()))
                 .andExpect(jsonPath("$.type").value(expectedTypeUri))
-                .andExpect(jsonPath("$.title").value(ProblemType.DEFAULT_USER_MESSAGE_VALIDATION.getTitle()))
-                .andExpect(jsonPath("$.detail").value(expectedDetailMessageFromException))
-                .andExpect(jsonPath("$.userMessage").value(ProblemType.DEFAULT_USER_MESSAGE_VALIDATION.getMessage()))
+                .andExpect(jsonPath("$.title").value(ProblemType.INVALID_DATA.getTitle()))
+                .andExpect(jsonPath("$.detail").value(expectedDetailMessageFromConstructorException))
+                .andExpect(jsonPath("$.userMessage").value(ProblemType.INVALID_DATA.getMessage()))
                 .andExpect(jsonPath("$.instance").value("/task/new"));
     }
 
     @Test
-    @DisplayName("POST /task/new com SINGLE_CHOICE e nenhuma opção correta retorna 404 Bad Request")
-    void createNewTask_whenSingleChoiceHasNoCorrectOption_shouldReturnNotFound() throws Exception {
+    @DisplayName("POST /task/new com SINGLE_CHOICE e com menos de 2 escolhas (regra de negócio) retorna 400 Bad Request")
+    void createNewTask_whenSingleChoiceHasLessThanThree_RuleViolation_shouldReturnBadRequest() throws Exception {
+        // Arrange
+        String invalidJsonPayload = """
+        {
+            "courseId": 3,
+            "statement": "Qual opção está correta aqui (nenhuma)?",
+            "order": 1,
+            "type": "SINGLE_CHOICE",
+            "options": [
+                {"option": "Opção X", "isCorrect": false}
+            ]
+        }
+        """;
+
+        String expectedDetailMessageFromConstructorException = "Uma e apenas uma alternativa correta é permitida para Single Choice.";
+
+        // Act
+        ResultActions resultActions = mockMvc.perform(post("/task/new")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(invalidJsonPayload));
+
+        // Assert
+        String expectedTypeUri = errorBaseUri + ProblemType.INVALID_DATA.getPath();
+
+        resultActions
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(HttpStatus.BAD_REQUEST.value()))
+                .andExpect(jsonPath("$.type").value(expectedTypeUri))
+                .andExpect(jsonPath("$.title").value(ProblemType.INVALID_DATA.getTitle()))
+                .andExpect(jsonPath("$.detail").value(expectedDetailMessageFromConstructorException))
+                .andExpect(jsonPath("$.userMessage").value(ProblemType.INVALID_DATA.getMessage()))
+                .andExpect(jsonPath("$.instance").value("/task/new"));
+    }
+
+    @Test
+    @DisplayName("POST /task/new com SINGLE_CHOICE e courseId inexistente (UseCase lança Exceção) retorna 404 Not Found")
+    void createNewTask_whenSingleChoiceAndCourseIdNotFound_shouldReturnNotFound() throws Exception {
         // Arrange
         long nonExistentCourseId = 999L;
 
-        SingleChoiceTaskCreationRequest requestWithNonExistentCourse = new SingleChoiceTaskCreationRequest(
+        SingleChoiceTaskCreationRequest requestForNonExistentCourse = new SingleChoiceTaskCreationRequest(
                 nonExistentCourseId,
-                "Qual opção está correta aqui?",
+                "Enunciado para um curso que não existe (single choice)",
                 1,
                 Type.SINGLE_CHOICE,
-                defaultSingleChoiceOptionsInvalidSingleChoice()
+                defaultSingleChoiceOptionsValid()
+        );
+
+        String expectedExceptionDetailMessage = "Curso não encontrado com ID: " + nonExistentCourseId;
+
+        ResourceNotFoundException thrownException = new ResourceNotFoundException(expectedExceptionDetailMessage);
+
+        doThrow(thrownException)
+                .when(createTaskUseCaseMock).execute(any(TaskCreationRequest.class));
+
+        // Act
+        ResultActions resultActions = mockMvc.perform(post("/task/new")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(requestForNonExistentCourse)));
+
+        // Assert
+        String expectedTypeUri = errorBaseUri + ProblemType.RESOURCE_NOT_FOUND.getPath();
+        resultActions
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(HttpStatus.NOT_FOUND.value()))
+                .andExpect(jsonPath("$.type").value(expectedTypeUri))
+                .andExpect(jsonPath("$.title").value(ProblemType.RESOURCE_NOT_FOUND.getTitle()))
+                .andExpect(jsonPath("$.detail").value(expectedExceptionDetailMessage))
+                .andExpect(jsonPath("$.userMessage").value(ProblemType.RESOURCE_NOT_FOUND.getMessage()))
+                .andExpect(jsonPath("$.instance").value("/task/new"));
+    }
+
+    @Test
+    @DisplayName("POST /task/new com SINGLE_CHOICE quando UseCase lança RuntimeException inesperada retorna 500 Internal Server Error")
+    void createNewTask_whenSingleChoiceAndUseCaseThrowsUnhandledRuntimeException_shouldReturnInternalServerError() throws Exception {
+        // Arrange
+        SingleChoiceTaskCreationRequest validSingleChoiceRequest = new SingleChoiceTaskCreationRequest(
+                3L,
+                "Enunciado válido para teste de erro 500 com SingleChoice",
+                1,
+                Type.SINGLE_CHOICE,
+                defaultSingleChoiceOptionsValid()
+        );
+
+        RuntimeException unexpectedException = new RuntimeException("boom - erro inesperado no servidor para single choice");
+        doThrow(unexpectedException)
+                .when(createTaskUseCaseMock).execute(any(TaskCreationRequest.class));
+
+        // Act
+        ResultActions resultActions = mockMvc.perform(post("/task/new")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(validSingleChoiceRequest)));
+
+        // Assert
+        String expectedTypeUri = errorBaseUri + ProblemType.UNEXPECTED_ERROR.getPath();
+
+        resultActions
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.status").value(HttpStatus.INTERNAL_SERVER_ERROR.value()))
+                .andExpect(jsonPath("$.type").value(expectedTypeUri))
+                .andExpect(jsonPath("$.title").value(ProblemType.UNEXPECTED_ERROR.getTitle()))
+                .andExpect(jsonPath("$.detail").value(ProblemType.UNEXPECTED_ERROR.getMessage()))
+                .andExpect(jsonPath("$.userMessage").value(ProblemType.UNEXPECTED_ERROR.getMessage()))
+                .andExpect(jsonPath("$.instance").value("/task/new"));
+    }
+
+
+    @Test
+    @DisplayName("POST /task/new com payload válido para MULTIPLE_CHOICE retorna 200 OK e success=true")
+    void createNewTask_whenValidMultipleChoiceRequest_shouldReturnOk() throws Exception {
+        // Arrange
+        MultipleChoiceTaskCreationRequest multipleChoiceRequest = new MultipleChoiceTaskCreationRequest(
+                10L,
+                "Selecione todas as linguagens de programação server-side:",
+                1,
+                Type.MULTIPLE_CHOICE,
+                defaultMultipleChoiceOptionsValid()
+        );
+
+        doNothing().when(createTaskUseCaseMock).execute(any(TaskCreationRequest.class));
+
+        // Act & Assert
+        mockMvc.perform(post("/task/new")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(multipleChoiceRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+
+        verify(useCaseFactory).getUseCase(eq(Type.MULTIPLE_CHOICE));
+        verify(createTaskUseCaseMock).execute(captor.capture());
+
+        MultipleChoiceTaskCreationRequest multipleChoiceCaptured = (MultipleChoiceTaskCreationRequest) captor.getValue();
+        assertThat(multipleChoiceCaptured.courseId()).isEqualTo(10L);
+        assertThat(multipleChoiceCaptured.statement()).isEqualTo("Selecione todas as linguagens de programação server-side:");
+        assertThat(multipleChoiceCaptured.type()).isEqualTo(Type.MULTIPLE_CHOICE);
+        assertThat(multipleChoiceCaptured.options()).hasSize(3);
+        assertThat(multipleChoiceCaptured.options().stream().filter(ChoiceOptionRequest::isCorrect).count()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("POST /task/new com MULTIPLE_CHOICE e menos de duas opções corretas retorna 400 Bad Request")
+    void createNewTask_whenMultipleChoiceHasNotEnoughCorrectOptions_shouldReturnBadRequest() throws Exception {
+        // Arrange
+        String invalidJsonPayload = """
+        {
+            "courseId": 11,
+            "statement": "Qual é a única opção correta?",
+            "order": 1,
+            "type": "MULTIPLE_CHOICE",
+            "options": [
+                {"option": "Opção Múltipla A (Correta)", "isCorrect": true},
+                {"option": "Opção Múltipla B (Incorreta)", "isCorrect": false},
+                {"option": "Opção Múltipla C (Incorreta)", "isCorrect": false}
+            ]
+        }
+        """;
+
+        String expectedDetailMessageFromConstructorException = "São necessárias duas ou mais alternativas corretas e ao menos uma alternativa incorreta para Multiple Choice.";
+
+        // Act
+        ResultActions resultActions = mockMvc.perform(post("/task/new")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(invalidJsonPayload)); // <<< Envie a String JSON diretamente
+
+        // Assert
+        String expectedTypeUri = errorBaseUri + ProblemType.INVALID_DATA.getPath();
+
+        resultActions
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(HttpStatus.BAD_REQUEST.value()))
+                .andExpect(jsonPath("$.type").value(expectedTypeUri))
+                .andExpect(jsonPath("$.title").value(ProblemType.INVALID_DATA.getTitle()))
+                .andExpect(jsonPath("$.detail").value(expectedDetailMessageFromConstructorException))
+                .andExpect(jsonPath("$.userMessage").value(ProblemType.INVALID_DATA.getMessage()))
+                .andExpect(jsonPath("$.instance").value("/task/new"));
+    }
+
+    @Test
+    @DisplayName("POST /task/new com MULTIPLE_CHOICE e nenhuma opção incorreta retorna 400 Bad Request")
+    void createNewTask_whenMultipleChoiceHasNoIncorrectOption_shouldReturnBadRequest() throws Exception {
+        // Arrange
+        String invalidJsonPayload_AllCorrect = """
+        {
+            "courseId": 12,
+            "statement": "Todas são corretas?",
+            "order": 1,
+            "type": "MULTIPLE_CHOICE",
+            "options": [
+                {"option": "Opção Múltipla A (Correta)", "isCorrect": true},
+                {"option": "Opção Múltipla B (Correta)", "isCorrect": true},
+                {"option": "Opção Múltipla C (Correta)", "isCorrect": true}
+            ]
+        }
+        """;
+
+        String expectedDetailMessageFromConstructorException = "São necessárias duas ou mais alternativas corretas e ao menos uma alternativa incorreta para Multiple Choice.";
+
+        // Act
+        ResultActions resultActions = mockMvc.perform(post("/task/new")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(invalidJsonPayload_AllCorrect));
+
+        // Assert
+        String expectedTypeUri = errorBaseUri + ProblemType.INVALID_DATA.getPath();
+
+        resultActions
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(HttpStatus.BAD_REQUEST.value()))
+                .andExpect(jsonPath("$.type").value(expectedTypeUri))
+                .andExpect(jsonPath("$.title").value(ProblemType.INVALID_DATA.getTitle()))
+                .andExpect(jsonPath("$.detail").value(expectedDetailMessageFromConstructorException))
+                .andExpect(jsonPath("$.userMessage").value(ProblemType.INVALID_DATA.getMessage()))
+                .andExpect(jsonPath("$.instance").value("/task/new"));
+    }
+
+
+    @Test
+    @DisplayName("POST /task/new com MULTIPLE_CHOICE e poucas opções (< 3) retorna 400 Bad Request (Bean Validation)")
+    void createNewTask_whenMultipleChoiceHasTooFewOptions_shouldReturnBadRequest_BeanValidation() throws Exception {
+        // Arrange
+        String invalidJsonPayload_AllCorrectInTwoOptions = """
+        {
+            "courseId": 13,
+            "statement": "Poucas opções e todas corretas",
+            "order": 1,
+            "type": "MULTIPLE_CHOICE",
+            "options": [
+                {"option": "Opção A (Correta)", "isCorrect": true},
+                {"option": "Opção B (Correta)", "isCorrect": true}
+            ]
+        }
+        """;
+
+        String expectedDetailMessageFromConstructorException = "São necessárias duas ou mais alternativas corretas e ao menos uma alternativa incorreta para Multiple Choice.";
+
+        // Act
+        ResultActions resultActions = mockMvc.perform(post("/task/new")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(invalidJsonPayload_AllCorrectInTwoOptions));
+
+        // Assert
+        String expectedTypeUri = errorBaseUri + ProblemType.INVALID_DATA.getPath();
+
+        resultActions
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(HttpStatus.BAD_REQUEST.value()))
+                .andExpect(jsonPath("$.type").value(expectedTypeUri))
+                .andExpect(jsonPath("$.title").value(ProblemType.INVALID_DATA.getTitle()))
+                .andExpect(jsonPath("$.detail").value(expectedDetailMessageFromConstructorException))
+                .andExpect(jsonPath("$.userMessage").value(ProblemType.INVALID_DATA.getMessage()))
+                .andExpect(jsonPath("$.instance").value("/task/new"))
+                .andExpect(jsonPath("$.fields").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("POST /task/new com MULTIPLE_CHOICE quando CourseId não existe retorna 404 Not Found")
+    void createNewTask_whenMultipleChoiceAndCourseNotFound_shouldReturnNotFound() throws Exception {
+        // Arrange
+        long nonExistentCourseId = 998L;
+        MultipleChoiceTaskCreationRequest requestWithNonExistentCourse = new MultipleChoiceTaskCreationRequest(
+                nonExistentCourseId,
+                "Enunciado para um curso que não existe (múltipla escolha)",
+                1,
+                Type.MULTIPLE_CHOICE,
+                defaultMultipleChoiceOptionsValid()
         );
 
         String expectedExceptionDetailMessage = "Curso não encontrado com ID: " + nonExistentCourseId;
         ResourceNotFoundException thrownException = new ResourceNotFoundException(expectedExceptionDetailMessage);
 
         doThrow(thrownException)
-                .when(createTaskUseCaseMock).execute(any(SingleChoiceTaskCreationRequest.class));
+                .when(createTaskUseCaseMock).execute(any(TaskCreationRequest.class));
 
         // Act
         ResultActions resultActions = mockMvc.perform(post("/task/new")
@@ -295,30 +542,29 @@ public class TaskControllerTest {
 
         // Assert
         String expectedTypeUri = errorBaseUri + ProblemType.RESOURCE_NOT_FOUND.getPath();
-
         resultActions
-                .andExpect(status().isNotFound()) // HTTP 404
+                .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status").value(HttpStatus.NOT_FOUND.value()))
                 .andExpect(jsonPath("$.type").value(expectedTypeUri))
                 .andExpect(jsonPath("$.title").value(ProblemType.RESOURCE_NOT_FOUND.getTitle()))
-                .andExpect(jsonPath("$.detail").value(expectedExceptionDetailMessage)) // 'detail' vem de ex.getMessage()
-                .andExpect(jsonPath("$.userMessage").value(ProblemType.RESOURCE_NOT_FOUND.getMessage())) // 'userMessage' vem do ProblemType
+                .andExpect(jsonPath("$.detail").value(expectedExceptionDetailMessage))
+                .andExpect(jsonPath("$.userMessage").value(ProblemType.RESOURCE_NOT_FOUND.getMessage()))
                 .andExpect(jsonPath("$.instance").value("/task/new"));
     }
 
     @Test
-    @DisplayName("POST /task/new quando UseCase lança RuntimeException inesperada retorna 500 Internal Server Error")
-    void createNewTask_whenUseCaseThrowsUnhandledRuntimeException_shouldReturnInternalServerError() throws Exception {
+    @DisplayName("POST /task/new com MULTIPLE_CHOICE quando UseCase lança RuntimeException retorna 500 Internal Server Error")
+    void createNewTask_whenMultipleChoiceAndUseCaseThrowsUnhandledRuntimeException_shouldReturnInternalServerError() throws Exception {
         // Arrange
-        SingleChoiceTaskCreationRequest validRequest = new SingleChoiceTaskCreationRequest(
-                3L,
-                "Enunciado válido para teste de erro 500",
+        MultipleChoiceTaskCreationRequest validRequest = new MultipleChoiceTaskCreationRequest(
+                14L,
+                "Enunciado válido para teste de erro 500 (múltipla escolha)",
                 1,
-                Type.SINGLE_CHOICE,
-                defaultSingleChoiceOptionsInvalidSingleChoice()
+                Type.MULTIPLE_CHOICE,
+                defaultMultipleChoiceOptionsValid()
         );
 
-        RuntimeException unexpectedException = new RuntimeException("boom - erro inesperado no servidor");
+        RuntimeException unexpectedException = new RuntimeException("Erro interno simulado para múltipla escolha");
         doThrow(unexpectedException)
                 .when(createTaskUseCaseMock).execute(any(TaskCreationRequest.class));
 
@@ -329,7 +575,6 @@ public class TaskControllerTest {
 
         // Assert
         String expectedTypeUri = errorBaseUri + ProblemType.UNEXPECTED_ERROR.getPath();
-
         resultActions
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.status").value(HttpStatus.INTERNAL_SERVER_ERROR.value()))

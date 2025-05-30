@@ -25,6 +25,8 @@ public record SingleChoiceTaskCreationRequest(
         @NotNull
         Type type,
 
+        @NotEmpty
+        @Size(min = 2, max = 5)
         List<ChoiceOptionRequest> options
 ) implements ChoiceTaskCreationRequest  {
         public SingleChoiceTaskCreationRequest {
