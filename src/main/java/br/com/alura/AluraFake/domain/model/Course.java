@@ -2,6 +2,8 @@ package br.com.alura.AluraFake.domain.model;
 
 import br.com.alura.AluraFake.domain.enumeration.Status;
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
 import org.springframework.util.Assert;
 
 import java.time.LocalDateTime;
@@ -9,8 +11,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
+@Getter
 public class Course {
 
+    @Setter
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -19,10 +23,12 @@ public class Course {
     private String description;
     @ManyToOne
     private User instructor;
+    @Setter
     @Enumerated(EnumType.STRING)
     private Status status;
     private LocalDateTime publishedAt;
 
+    @Setter
     @OneToMany(
             mappedBy      = "course",
             cascade       = CascadeType.ALL,
@@ -53,39 +59,4 @@ public class Course {
         task.setCourse(null);
     }
 
-    public Long getId() {
-        return id;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public String getTitle() {
-        return title;
-    }
-
-    public void setStatus(Status status) {
-        this.status = status;
-    }
-
-    public User getInstructor() {
-        return instructor;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public Status getStatus() {
-        return status;
-    }
-
-    public LocalDateTime getPublishedAt() {
-        return publishedAt;
-    }
-
-    public List<Task> getTasks() {
-        return tasks;
-    }
 }
