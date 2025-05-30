@@ -1,6 +1,7 @@
 package br.com.alura.AluraFake.domain.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Size;
 import lombok.*;
 
 import java.util.ArrayList;
@@ -18,6 +19,7 @@ public class Task {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Size(min = 4, max = 255)
     @Column(nullable = false)
     private String statement;
 

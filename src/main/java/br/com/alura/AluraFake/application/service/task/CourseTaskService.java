@@ -1,5 +1,6 @@
 package br.com.alura.AluraFake.application.service.task;
 
+import br.com.alura.AluraFake.domain.enumeration.Status;
 import br.com.alura.AluraFake.domain.model.Course;
 import br.com.alura.AluraFake.domain.model.Task;
 import br.com.alura.AluraFake.domain.repository.CourseRepository;
@@ -27,7 +28,31 @@ public class CourseTaskService {
         Course course = courseRepository.findById(courseId)
                 .orElseThrow(() -> new ResourceNotFoundException("Curso não encontrado com ID: " + courseId));
 
+        if (course.getStatus() != Status.BUILDING) {
+            throw new InvalidCourseTaskOperationException(
+                    String.format("Não é possível adicionar tarefas ao curso '%s' pois seu status é '%s'. Apenas cursos com status 'BUILDING' podem ser modificados.",
+                            course.getTitle(),
+                            course.getStatus())
+            );
+        }
+
         List<Task> existingTasks = course.getTasks();
+
+        String newStatement = newTask.getStatement();
+        if (newStatement != null && !newStatement.trim().isEmpty()) {
+            String normalizedNewStatement = newStatement.trim().toLowerCase();
+            boolean statementExists = existingTasks.stream()
+                    .anyMatch(existingTask ->
+                            existingTask.getStatement() != null &&
+                                    existingTask.getStatement().trim().toLowerCase().equals(normalizedNewStatement)
+                    );
+
+            if (statementExists) {
+                throw new InvalidCourseTaskOperationException(
+                        "O curso já possui uma questão com o enunciado: '" + newTask.getStatement() + "'"
+                );
+            }
+        }
 
         if (position < 1 || position > existingTasks.size() + 1) {
             throw new InvalidCourseTaskOperationException(

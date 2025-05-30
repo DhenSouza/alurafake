@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 @JsonTypeInfo(
         use = JsonTypeInfo.Id.NAME,
@@ -22,6 +23,7 @@ public interface TaskCreationRequest {
     @NotNull
     Long courseId();
 
+    @Size(min = 4, max = 255, message = "O enunciado deve ter entre 4 e 255 caractere")
     @NotNull
     String statement();
 

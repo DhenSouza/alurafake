@@ -1,6 +1,7 @@
 package br.com.alura.AluraFake.task.unitTest.service;
 
 import br.com.alura.AluraFake.application.service.task.CourseTaskService;
+import br.com.alura.AluraFake.domain.enumeration.Status;
 import br.com.alura.AluraFake.domain.model.Course;
 import br.com.alura.AluraFake.domain.model.Task;
 import br.com.alura.AluraFake.domain.repository.CourseRepository;
@@ -48,6 +49,7 @@ class CourseTaskServiceTest {
     void setUp() {
         course = new Course();
         course.setId(1L);
+        course.setStatus(Status.BUILDING);
         course.setTasks(new ArrayList<>());
 
         task1 = new Task();
@@ -227,6 +229,58 @@ class CourseTaskServiceTest {
             courseTaskService.removeTaskFromCourse(1L, task1.getId());
         });
         assertThat(exception.getMessage()).isEqualTo("A tarefa com ID " + task1.getId() + " não pertence ao curso com ID: 1");
+    }
+
+    @Test
+    @DisplayName("addTaskToCourseAtPosition: Deve lançar InvalidCourseTaskOperationException se enunciado da nova tarefa já existir no curso")
+    void addTaskToCourseAtPosition_whenNewTaskStatementAlreadyExistsInCourse_shouldThrowInvalidCourseTaskOperationException() {
+        // Arrange
+        String enunciadoExistente = "Qual é a cor do céu?";
+        task1.setStatement(enunciadoExistente);
+        course.getTasks().add(task1);
+
+        when(courseRepositoryMock.findById(1L)).thenReturn(Optional.of(course));
+
+        newTask.setStatement("qual é A COR DO CÉU?  ");
+
+        String mensagemEsperada = "O curso já possui uma questão com o enunciado: '" + newTask.getStatement() + "'";
+
+
+        // Act & Assert
+        InvalidCourseTaskOperationException exception = assertThrows(InvalidCourseTaskOperationException.class, () -> {
+            courseTaskService.addTaskToCourseAtPosition(1L, newTask, 2);
+        });
+
+        assertThat(exception.getMessage()).isEqualTo(mensagemEsperada);
+
+        verify(taskRepositoryMock, never()).save(any(Task.class));
+    }
+
+    @Test
+    @DisplayName("addTaskToCourseAtPosition: Deve lançar InvalidCourseTaskOperationException se status do curso não for BUILDING")
+    void addTaskToCourseAtPosition_whenCourseStatusIsNotBuilding_shouldThrowInvalidCourseTaskOperationException() {
+        // Arrange
+        Long courseId = 1L;
+
+        course.setStatus(Status.PUBLISHED);
+        when(courseRepositoryMock.findById(courseId)).thenReturn(Optional.of(course));
+
+        int position = 1;
+
+        String expectedErrorMessage = String.format(
+                "Não é possível adicionar tarefas ao curso '%s' pois seu status é '%s'. Apenas cursos com status 'BUILDING' podem ser modificados.",
+                course.getTitle(),
+                course.getStatus()
+        );
+
+        // Act & Assert
+        InvalidCourseTaskOperationException exception = assertThrows(InvalidCourseTaskOperationException.class, () -> {
+            courseTaskService.addTaskToCourseAtPosition(courseId, newTask, position);
+        });
+
+        assertThat(exception.getMessage()).isEqualTo(expectedErrorMessage);
+
+        verify(taskRepositoryMock, never()).save(any(Task.class));
     }
 
 }
