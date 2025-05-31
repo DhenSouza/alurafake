@@ -1,19 +1,11 @@
 package br.com.alura.AluraFake.api.controller;
 
-import br.com.alura.AluraFake.application.service.course.CourseListInterface;
-import br.com.alura.AluraFake.application.service.course.CoursePublicationServiceInterface;
-import br.com.alura.AluraFake.application.service.course.CreateNewCourseServiceInterface;
-import br.com.alura.AluraFake.domain.model.Course;
+import br.com.alura.AluraFake.application.interfaces.CourseServiceInterface;
 import br.com.alura.AluraFake.api.dto.response.CourseListItemDTO;
-import br.com.alura.AluraFake.domain.repository.CourseRepository;
 import br.com.alura.AluraFake.api.dto.request.NewCourseDTO;
-import br.com.alura.AluraFake.domain.model.User;
-import br.com.alura.AluraFake.domain.repository.UserRepository;
-import br.com.alura.AluraFake.util.ErrorItemDTO;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
@@ -22,33 +14,27 @@ import java.util.*;
 @RequestMapping("/course")
 public class CourseController {
 
-    private final CreateNewCourseServiceInterface createNewCourseService;
-    private final CoursePublicationServiceInterface publishService;
-    private final CourseListInterface courseListService;
+    private final CourseServiceInterface courseService;
 
     @Autowired
-    public CourseController(CoursePublicationServiceInterface publishService,
-                            CreateNewCourseServiceInterface createNewCourseService,
-                            CourseListInterface courseListService) {
-        this.publishService = publishService;
-        this.createNewCourseService = createNewCourseService;
-        this.courseListService = courseListService;
+    public CourseController(CourseServiceInterface courseService) {
+        this.courseService = courseService;
     }
 
     @PostMapping("/new")
     public ResponseEntity<?> createCourse(@Valid @RequestBody NewCourseDTO newCourse) {
-        this.createNewCourseService.createNewCourse(newCourse);
+        this.courseService.createNewCourse(newCourse);
         return ResponseEntity.status(HttpStatus.OK).build();
     }
 
     @GetMapping("/all")
     public ResponseEntity<List<CourseListItemDTO>> listAllCourses() {
-        return ResponseEntity.ok(courseListService.listAllCourses());
+        return ResponseEntity.ok(courseService.listAllCourses());
     }
 
     @PostMapping("/{id}/publish")
     public ResponseEntity<?> createCourse(@PathVariable("id") Long id) {
-        this.publishService.publish(id);
+        this.courseService.publish(id);
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 

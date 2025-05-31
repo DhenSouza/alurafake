@@ -6,7 +6,9 @@ import br.com.alura.AluraFake.domain.model.Task;
 import br.com.alura.AluraFake.exceptionhandler.BusinessRuleException;
 import org.springframework.stereotype.Component;
 
+import java.util.Comparator;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -31,6 +33,24 @@ public class CourseContentValidation implements CourseContentValidationInterface
                     "Para publicar o curso, é necessário ao menos uma atividade de cada um dos seguintes tipos: " +
                             requiredTaskTypes.stream().map(Enum::name).collect(Collectors.joining(", "))
             );
+        }
+    }
+
+    @Override
+    public void validateTaskOrderIsContinuous(Course course) {
+        List<Task> tasks = course.getTasks();
+        if (tasks == null || tasks.isEmpty()) {
+            throw new BusinessRuleException("O curso não pode ser publicado sem atividades.");
+        }
+
+        tasks.sort(Comparator.comparingInt(Task::getOrder));
+
+        for (int i = 0; i < tasks.size(); i++) {
+            if (tasks.get(i).getOrder() != (i + 1)) {
+                throw new BusinessRuleException(String.format(
+                        "A ordem das atividades do curso não é contínua. Encontrada ordem %d na posição %d, esperado %d.",
+                        tasks.get(i).getOrder(), i + 1, i + 1));
+            }
         }
     }
 }

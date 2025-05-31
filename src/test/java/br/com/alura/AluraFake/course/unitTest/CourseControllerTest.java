@@ -3,10 +3,7 @@ package br.com.alura.AluraFake.course.unitTest;
 import br.com.alura.AluraFake.api.controller.CourseController;
 import br.com.alura.AluraFake.api.dto.request.NewCourseDTO;
 import br.com.alura.AluraFake.api.dto.response.CourseListItemDTO;
-import br.com.alura.AluraFake.application.service.course.CourseListInterface;
-import br.com.alura.AluraFake.application.service.course.CoursePublicationServiceInterface;
-import br.com.alura.AluraFake.application.service.course.CreateNewCourseServiceInterface;
-import br.com.alura.AluraFake.domain.enumeration.Role;
+import br.com.alura.AluraFake.application.interfaces.CourseServiceInterface;
 import br.com.alura.AluraFake.domain.enumeration.Status;
 import br.com.alura.AluraFake.domain.model.Course;
 import br.com.alura.AluraFake.domain.model.User;
@@ -33,11 +30,13 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.Collections;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @ExtendWith(SpringExtension.class)
@@ -52,13 +51,7 @@ class CourseControllerTest {
     private ObjectMapper objectMapper;
 
     @MockBean
-    private CreateNewCourseServiceInterface createNewCourseServiceMock;
-
-    @MockBean
-    private CoursePublicationServiceInterface publishServiceMock;
-
-    @MockBean
-    private CourseListInterface courseListServiceMock;
+    private CourseServiceInterface courseServiceMock;
 
     @Captor
     private ArgumentCaptor<NewCourseDTO> newCourseDTOCaptor;
@@ -67,7 +60,6 @@ class CourseControllerTest {
 
     private NewCourseDTO validNewCourseDTO;
     private Course createdCourse;
-
     private User instructor;
 
     @BeforeEach
@@ -77,19 +69,19 @@ class CourseControllerTest {
         validNewCourseDTO.setDescription("Aprenda tópicos avançados");
         validNewCourseDTO.setEmailInstructor("instructor@example.com");
 
-        instructor = new User("Taina", "Taina@email.com", Role.INSTRUCTOR, "senha123");
+        instructor = new User("Taina", "Taina@email.com", br.com.alura.AluraFake.domain.enumeration.Role.INSTRUCTOR, "senha123"); // Use seu enum Role aqui
 
         createdCourse = new Course("Curso de Java Avançado", "Aprenda tópicos avançados", instructor);
         createdCourse.setId(1L);
         createdCourse.setStatus(Status.BUILDING);
-        createdCourse.setPublishedAt(LocalDateTime.now());
+
     }
 
     @Test
-    @DisplayName("POST /course/new: Deve criar curso com DTO válido e retornar Status 200 Created")
+    @DisplayName("POST /course/new: Deve criar curso com DTO válido e retornar Status 201 Created")
     void createCourse_withValidDTO_shouldReturnCreated() throws Exception {
         // Arrange
-        when(createNewCourseServiceMock.createNewCourse(any(NewCourseDTO.class))).thenReturn(createdCourse);
+        when(courseServiceMock.createNewCourse(any(NewCourseDTO.class))).thenReturn(createdCourse);
 
         // Act
         ResultActions resultActions = mockMvc.perform(post("/course/new")
@@ -99,7 +91,7 @@ class CourseControllerTest {
         // Assert
         resultActions.andExpect(status().isOk());
 
-        verify(createNewCourseServiceMock).createNewCourse(newCourseDTOCaptor.capture());
+        verify(courseServiceMock).createNewCourse(newCourseDTOCaptor.capture());
         assertThat(newCourseDTOCaptor.getValue().getTitle()).isEqualTo(validNewCourseDTO.getTitle());
     }
 
@@ -125,7 +117,7 @@ class CourseControllerTest {
                 .andExpect(jsonPath("$.title").value(ProblemType.DEFAULT_USER_MESSAGE_VALIDATION.getTitle()))
                 .andExpect(jsonPath("$.fields[0].name").exists());
 
-        verify(createNewCourseServiceMock, never()).createNewCourse(any());
+        verify(courseServiceMock, never()).createNewCourse(any());
     }
 
     @Test
@@ -133,7 +125,7 @@ class CourseControllerTest {
     void createCourse_whenInstructorNotFoundByService_shouldReturnNotFound() throws Exception {
         // Arrange
         String errorMessage = "Instrutor não encontrado com e-mail: " + validNewCourseDTO.getEmailInstructor();
-        when(createNewCourseServiceMock.createNewCourse(any(NewCourseDTO.class)))
+        when(courseServiceMock.createNewCourse(any(NewCourseDTO.class)))
                 .thenThrow(new EntityNotFoundException(errorMessage));
 
         // Act
@@ -142,7 +134,6 @@ class CourseControllerTest {
                 .content(objectMapper.writeValueAsString(validNewCourseDTO)));
 
         // Assert
-        // Seu GlobalExceptionHandler.handleEntityNotFound usa ProblemType.RESOURCE_NOT_FOUND
         resultActions
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status").value(HttpStatus.NOT_FOUND.value()))
@@ -152,24 +143,24 @@ class CourseControllerTest {
     }
 
     @Test
-    @DisplayName("GET /course/all: Deve listar cursos e retornar Status 200 OK com lista")
-    void listAllCourses_whenCoursesExist_shouldReturnOkWithCourseList() throws Exception {
+    @DisplayName("GET /course/all: Deve listar cursos e retornar Status 200 OK com lista detalhada")
+    void listAllCourses_whenCoursesExist_shouldReturnOkWithDetailedCourseList() throws Exception {
         // Arrange
-        Course createCourseBuildingStatus = new Course("Curso 1", "Aprenda tópicos avançados", instructor);
-        createCourseBuildingStatus.setId(2L);
-        createCourseBuildingStatus.setStatus(Status.BUILDING);
-        createCourseBuildingStatus.setPublishedAt(LocalDateTime.now());
+        User instructor = new User("Nome Instrutor", "instrutor@example.com", br.com.alura.AluraFake.domain.enumeration.Role.INSTRUCTOR, "password"); // Use seu enum Role
 
-        Course createCoursePublishedStatus = new Course("Curso 2", "Aprenda tópicos avançados", instructor);
-        createCourseBuildingStatus.setId(2L);
-        createCourseBuildingStatus.setStatus(Status.BUILDING);
-        createCourseBuildingStatus.setPublishedAt(LocalDateTime.now());
+        Course course1 = new Course("Curso de Java Completo", "Aprenda Java do básico ao avançado", instructor);
+        course1.setId(1L);
+        course1.setStatus(Status.PUBLISHED);
 
-        CourseListItemDTO dto1 = new CourseListItemDTO(createCourseBuildingStatus);
-        CourseListItemDTO dto2 = new CourseListItemDTO(createCoursePublishedStatus);
+        Course course2 = new Course("Spring Boot Essentials", "Domine o Spring Boot para APIs REST", instructor);
+        course2.setId(2L);
+        course2.setStatus(Status.BUILDING);
 
-        List<CourseListItemDTO> courseList = List.of(dto1, dto2);
-        when(courseListServiceMock.listAllCourses()).thenReturn(courseList);
+        CourseListItemDTO dto1 = new CourseListItemDTO(course1);
+        CourseListItemDTO dto2 = new CourseListItemDTO(course2);
+        List<CourseListItemDTO> expectedCourseDtoList = List.of(dto1, dto2);
+
+        when(courseServiceMock.listAllCourses()).thenReturn(expectedCourseDtoList);
 
         // Act
         ResultActions resultActions = mockMvc.perform(get("/course/all")
@@ -178,18 +169,26 @@ class CourseControllerTest {
         // Assert
         resultActions
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(2))
-                .andExpect(jsonPath("$[0].title").value("Curso 1"))
-                .andExpect(jsonPath("$[1].title").value("Curso 2"));
+                .andExpect(jsonPath("$.length()").value(expectedCourseDtoList.size()))
 
-        verify(courseListServiceMock).listAllCourses();
+                .andExpect(jsonPath("$[0].id").value(dto1.getId()))
+                .andExpect(jsonPath("$[0].title").value(dto1.getTitle()))
+                .andExpect(jsonPath("$[0].description").value(dto1.getDescription()))
+                .andExpect(jsonPath("$[0].status").value(dto1.getStatus().toString()))
+
+                .andExpect(jsonPath("$[1].id").value(dto2.getId()))
+                .andExpect(jsonPath("$[1].title").value(dto2.getTitle()))
+                .andExpect(jsonPath("$[1].description").value(dto2.getDescription()))
+                .andExpect(jsonPath("$[1].status").value(dto2.getStatus().toString()));
+
+        verify(courseServiceMock).listAllCourses();
     }
 
     @Test
     @DisplayName("GET /course/all: Deve retornar Status 200 OK com lista vazia se não houver cursos")
     void listAllCourses_whenNoCoursesExist_shouldReturnOkWithEmptyList() throws Exception {
         // Arrange
-        when(courseListServiceMock.listAllCourses()).thenReturn(Collections.emptyList());
+        when(courseServiceMock.listAllCourses()).thenReturn(Collections.emptyList());
 
         // Act
         ResultActions resultActions = mockMvc.perform(get("/course/all")
@@ -200,7 +199,7 @@ class CourseControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().json("[]"));
 
-        verify(courseListServiceMock).listAllCourses();
+        verify(courseServiceMock).listAllCourses();
     }
 
     @Test
@@ -208,17 +207,16 @@ class CourseControllerTest {
     void publishCourse_withValidIdAndConditions_shouldReturnCreated() throws Exception {
         // Arrange
         Long courseIdToPublish = 1L;
-        // O método publishService.publish(id) retorna o Course atualizado
         createdCourse.setStatus(Status.PUBLISHED);
         createdCourse.setPublishedAt(LocalDateTime.now());
-        when(publishServiceMock.publish(courseIdToPublish)).thenReturn(createdCourse);
+        when(courseServiceMock.publish(courseIdToPublish)).thenReturn(createdCourse);
 
         // Act
         ResultActions resultActions = mockMvc.perform(post("/course/{id}/publish", courseIdToPublish));
 
         // Assert
         resultActions.andExpect(status().isCreated());
-        verify(publishServiceMock).publish(courseIdToPublish);
+        verify(courseServiceMock).publish(courseIdToPublish);
     }
 
     @Test
@@ -227,7 +225,7 @@ class CourseControllerTest {
         // Arrange
         Long nonExistentCourseId = 999L;
         String errorMessage = "Curso não encontrado com ID: " + nonExistentCourseId;
-        when(publishServiceMock.publish(nonExistentCourseId)).thenThrow(new ResourceNotFoundException(errorMessage));
+        when(courseServiceMock.publish(nonExistentCourseId)).thenThrow(new ResourceNotFoundException(errorMessage));
 
         // Act
         ResultActions resultActions = mockMvc.perform(post("/course/{id}/publish", nonExistentCourseId));
@@ -241,24 +239,45 @@ class CourseControllerTest {
                 .andExpect(jsonPath("$.detail").value(errorMessage));
     }
 
+// Dentro da sua classe CourseControllerTest
+
     @Test
     @DisplayName("POST /course/{id}/publish: Deve retornar Status 400 se regra de negócio for violada (ex: status não é BUILDING)")
     void publishCourse_whenBusinessRuleViolated_shouldReturnBadRequest() throws Exception {
         // Arrange
         Long courseId = 1L;
-        String errorMessage = "O curso 'Curso Teste' não pode ser publicado pois seu status é 'PUBLISHED'. Apenas cursos em 'BUILDING' são permitidos.";
-        when(publishServiceMock.publish(courseId)).thenThrow(new BusinessRuleException(errorMessage));
+        String courseTitleForTest = "Curso Já Publicado Para Teste";
+
+        createdCourse.setTitle(courseTitleForTest);
+        createdCourse.setStatus(Status.PUBLISHED);
+
+        String expectedDetailMessage = String.format(
+                "O curso '%s' não pode ser publicado pois seu status é '%s'. Apenas cursos em 'BUILDING' são permitidos.",
+                createdCourse.getTitle(),
+                createdCourse.getStatus()
+        );
+
+        when(courseServiceMock.publish(courseId))
+                .thenThrow(new BusinessRuleException(expectedDetailMessage));
 
         // Act
-        ResultActions resultActions = mockMvc.perform(post("/course/{id}/publish", courseId));
+        ResultActions resultActions = mockMvc.perform(post("/course/{id}/publish", courseId)
+                .contentType(MediaType.APPLICATION_JSON)); // Adicionar contentType é uma boa prática
 
         // Assert
+        String expectedTypeUri = errorBaseUri + ProblemType.INVALID_OPERATION.getPath();
+        String expectedTitle = ProblemType.INVALID_OPERATION.getTitle();
+        String expectedUserMessage = expectedDetailMessage;
+
         resultActions
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(HttpStatus.BAD_REQUEST.value()))
-                .andExpect(jsonPath("$.type").value(errorBaseUri + ProblemType.INVALID_OPERATION.getPath()))
-                .andExpect(jsonPath("$.title").value(ProblemType.INVALID_OPERATION.getTitle()))
-                .andExpect(jsonPath("$.detail").value(errorMessage));
+                .andExpect(jsonPath("$.type").value(expectedTypeUri))
+                .andExpect(jsonPath("$.title").value(expectedTitle))
+                .andExpect(jsonPath("$.detail").value(expectedDetailMessage))
+                .andExpect(jsonPath("$.userMessage").value(expectedUserMessage))
+                .andExpect(jsonPath("$.instance").value("/course/" + courseId + "/publish"))
+                .andExpect(jsonPath("$.fields").doesNotExist());
     }
 
     @Test
@@ -266,7 +285,7 @@ class CourseControllerTest {
     void publishCourse_whenServiceThrowsRuntimeException_shouldReturnInternalServerError() throws Exception {
         // Arrange
         Long courseId = 1L;
-        when(publishServiceMock.publish(courseId)).thenThrow(new RuntimeException("Erro interno inesperado"));
+        when(courseServiceMock.publish(courseId)).thenThrow(new RuntimeException("Erro interno inesperado"));
 
         // Act
         ResultActions resultActions = mockMvc.perform(post("/course/{id}/publish", courseId));
