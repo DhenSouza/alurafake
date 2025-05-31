@@ -3,11 +3,15 @@ package br.com.alura.AluraFake.api.controller;
 import br.com.alura.AluraFake.api.dto.request.NewUserDTO;
 import br.com.alura.AluraFake.api.dto.response.UserListItemDTO;
 import br.com.alura.AluraFake.application.interfaces.UserServiceInterface;
+import br.com.alura.AluraFake.domain.model.Course;
+import br.com.alura.AluraFake.domain.model.User;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+import java.net.URI;
 import java.util.List;
 
 @RestController
@@ -23,7 +27,14 @@ public class UserController {
 
     @PostMapping("/new")
     public ResponseEntity<?> newStudent(@RequestBody @Valid NewUserDTO newUser) {
-        this.userService.createUser(newUser);
+        User createdUser = this.userService.createUser(newUser);
+
+        // Cria a URI para o novo recurso criado
+        URI location = ServletUriComponentsBuilder
+                .fromCurrentRequest()
+                .path("/{id}")
+                .buildAndExpand(createdUser.getId())
+                .toUri();
         return ResponseEntity.status(HttpStatus.OK).build();
     }
 

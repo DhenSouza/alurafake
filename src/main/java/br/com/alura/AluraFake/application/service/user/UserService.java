@@ -6,6 +6,7 @@ import br.com.alura.AluraFake.application.interfaces.UserServiceInterface;
 import br.com.alura.AluraFake.domain.model.User;
 import br.com.alura.AluraFake.domain.repository.UserRepository;
 import br.com.alura.AluraFake.exceptionhandler.BusinessRuleException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,9 +16,11 @@ import java.util.List;
 public class UserService implements UserServiceInterface {
 
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
-    public UserService(UserRepository userRepository) {
+    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Transactional
@@ -26,6 +29,7 @@ public class UserService implements UserServiceInterface {
             throw new BusinessRuleException("Já existe um usuário cadastrado com o e-mail: " + newUser.getEmail());
         }
         User user = newUser.toModel();
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
 
         return userRepository.save(user);
     }
