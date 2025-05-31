@@ -24,6 +24,7 @@ public abstract class AbstractCreateChoiceTaskUseCase <T extends ChoiceTaskCreat
         Task newTask = Task.builder()
                 .statement(request.statement())
                 .order(request.order())
+                .typeTask(request.type())
                 .build();
 
         List<TaskOption> taskOptions = request.options().stream()

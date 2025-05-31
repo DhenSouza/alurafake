@@ -28,6 +28,7 @@ public class CreateOpenTextTaskUseCase implements CreateTaskUseCase<OpenTextTask
         Task newOpenTextTask = Task.builder()
                 .statement(request.statement())
                 .order(request.order())
+                .typeTask(request.type())
                 .build();
 
         courseTaskService.addTaskToCourseAtPosition(
