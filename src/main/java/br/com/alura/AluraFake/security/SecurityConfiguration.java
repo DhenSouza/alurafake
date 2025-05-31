@@ -1,4 +1,4 @@
-package br.com.alura.AluraFake.util;
+package br.com.alura.AluraFake.security;
 
 import br.com.alura.AluraFake.domain.enumeration.Role;
 import org.springframework.context.annotation.Bean;

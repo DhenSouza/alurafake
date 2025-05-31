@@ -52,6 +52,7 @@ class CourseTaskServiceTest {
         course.setStatus(Status.BUILDING);
         course.setTasks(new ArrayList<>());
 
+
         task1 = new Task();
         task1.setId(101L);
         task1.setOrder(1);
