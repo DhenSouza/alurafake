@@ -1,14 +1,11 @@
 package br.com.alura.AluraFake.api.controller;
 
 import br.com.alura.AluraFake.api.dto.request.NewUserDTO;
-import br.com.alura.AluraFake.application.service.user.UserCreateInterface;
-import br.com.alura.AluraFake.domain.model.User;
 import br.com.alura.AluraFake.api.dto.response.UserListItemDTO;
-import br.com.alura.AluraFake.domain.repository.UserRepository;
-import br.com.alura.AluraFake.util.ErrorItemDTO;
+import br.com.alura.AluraFake.application.interfaces.UserServiceInterface;
 import jakarta.validation.Valid;
-import org.springframework.http.*;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -17,24 +14,22 @@ import java.util.List;
 @RequestMapping("/user")
 public class UserController {
 
-    private final UserCreateInterface userCreate;
+    private final UserServiceInterface userService;
 
-    private final UserRepository userRepository;
 
-    public UserController(UserCreateInterface userCreate, UserRepository userRepository) {
-        this.userCreate = userCreate;
-        this.userRepository = userRepository;
+    public UserController(UserServiceInterface userService) {
+        this.userService = userService;
     }
 
     @PostMapping("/new")
     public ResponseEntity<?> newStudent(@RequestBody @Valid NewUserDTO newUser) {
-        this.userCreate.createUser(newUser);
+        this.userService.createUser(newUser);
         return ResponseEntity.status(HttpStatus.OK).build();
     }
 
     @GetMapping("/all")
-    public List<UserListItemDTO> listAllUsers() {
-        return userRepository.findAll().stream().map(UserListItemDTO::new).toList();
+    public ResponseEntity<List<UserListItemDTO>> listAllUsers() {
+        return ResponseEntity.status(HttpStatus.OK).body(userService.listAllUsers());
     }
 
 }
