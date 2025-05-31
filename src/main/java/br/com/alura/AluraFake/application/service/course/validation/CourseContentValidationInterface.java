@@ -4,4 +4,5 @@ import br.com.alura.AluraFake.domain.model.Course;
 
 public interface CourseContentValidationInterface {
     void validateType(Course course);
+    public void validateTaskOrderIsContinuous(Course course);
 }

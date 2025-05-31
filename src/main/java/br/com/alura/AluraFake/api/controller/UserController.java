@@ -1,41 +1,35 @@
 package br.com.alura.AluraFake.api.controller;
 
 import br.com.alura.AluraFake.api.dto.request.NewUserDTO;
-import br.com.alura.AluraFake.domain.model.User;
 import br.com.alura.AluraFake.api.dto.response.UserListItemDTO;
-import br.com.alura.AluraFake.domain.repository.UserRepository;
-import br.com.alura.AluraFake.util.ErrorItemDTO;
+import br.com.alura.AluraFake.application.interfaces.UserServiceInterface;
 import jakarta.validation.Valid;
-import org.springframework.http.*;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
+@RequestMapping("/user")
 public class UserController {
 
-    private final UserRepository userRepository;
+    private final UserServiceInterface userService;
 
-    public UserController(UserRepository userRepository) {
-        this.userRepository = userRepository;
+
+    public UserController(UserServiceInterface userService) {
+        this.userService = userService;
     }
 
-    @Transactional
-    @PostMapping("/user/new")
+    @PostMapping("/new")
     public ResponseEntity<?> newStudent(@RequestBody @Valid NewUserDTO newUser) {
-        if(userRepository.existsByEmail(newUser.getEmail())) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(new ErrorItemDTO("email", "Email já cadastrado no sistema"));
-        }
-        User user = newUser.toModel();
-        userRepository.save(user);
-        return ResponseEntity.status(HttpStatus.CREATED).build();
+        this.userService.createUser(newUser);
+        return ResponseEntity.status(HttpStatus.OK).build();
     }
 
-    @GetMapping("/user/all")
-    public List<UserListItemDTO> listAllUsers() {
-        return userRepository.findAll().stream().map(UserListItemDTO::new).toList();
+    @GetMapping("/all")
+    public ResponseEntity<List<UserListItemDTO>> listAllUsers() {
+        return ResponseEntity.status(HttpStatus.OK).body(userService.listAllUsers());
     }
 
 }
