@@ -51,6 +51,8 @@ public class CourseService implements CourseServiceInterface {
                 author
         );
 
+        course.setPublishedAt(LocalDateTime.now());
+
         return courseRepository.save(course);
     }
 
