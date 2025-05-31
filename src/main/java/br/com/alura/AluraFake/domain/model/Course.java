@@ -2,6 +2,7 @@ package br.com.alura.AluraFake.domain.model;
 
 import br.com.alura.AluraFake.domain.enumeration.Status;
 import jakarta.persistence.*;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.util.Assert;
@@ -26,6 +27,7 @@ public class Course {
     @Setter
     @Enumerated(EnumType.STRING)
     private Status status;
+    @Setter
     private LocalDateTime publishedAt;
 
     @Setter

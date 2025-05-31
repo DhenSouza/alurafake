@@ -1,5 +1,6 @@
 package br.com.alura.AluraFake.domain.model;
 
+import br.com.alura.AluraFake.domain.enumeration.Type;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Size;
 import lombok.*;
@@ -29,6 +30,10 @@ public class Task {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "course_id", nullable = false)
     private Course course;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "task_type", nullable = false)
+    private Type typeTask;
 
     @OneToMany(mappedBy = "task", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @Builder.Default

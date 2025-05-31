@@ -309,4 +309,37 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 .map(ref -> ref.getFieldName() != null ? ref.getFieldName() : "[" + ref.getIndex() + "]")
                 .collect(Collectors.joining("."));
     }
+
+    @ExceptionHandler(BusinessRuleException.class)
+    public ResponseEntity<ErrorResponse> handleBusinessRuleViolation(
+            BusinessRuleException ex,
+            WebRequest request) {
+        String uri = ((ServletWebRequest) request).getRequest().getRequestURI();
+        ErrorResponse errorResponse = new ErrorResponse(
+                HttpStatus.BAD_REQUEST.value(),
+                errorBaseUri + ProblemType.INVALID_OPERATION.getPath(),
+                ProblemType.INVALID_OPERATION.getTitle(),
+                ex.getMessage(),
+                uri,
+                ex.getMessage()
+        );
+        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST); // Ou HttpStatus.UNPROCESSABLE_ENTITY
+    }
+
+    @ExceptionHandler(EntityNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleEntityNotFound(
+            EntityNotFoundException ex,
+            WebRequest request) {
+
+        String uri = ((ServletWebRequest) request).getRequest().getRequestURI();
+        ErrorResponse errorResponse = new ErrorResponse(
+                HttpStatus.NOT_FOUND.value(),
+                errorBaseUri + ProblemType.RESOURCE_NOT_FOUND.getPath(),
+                ProblemType.RESOURCE_NOT_FOUND.getTitle(),
+                ex.getMessage(),
+                uri,
+                ProblemType.RESOURCE_NOT_FOUND.getMessage()
+        );
+        return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND);
+    }
 }
