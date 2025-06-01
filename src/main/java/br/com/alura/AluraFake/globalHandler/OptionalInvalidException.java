@@ -1,4 +1,4 @@
-package br.com.alura.AluraFake.exceptionhandler;
+package br.com.alura.AluraFake.globalHandler;
 
 public class OptionalInvalidException extends RuntimeException {
     public OptionalInvalidException(String message) {

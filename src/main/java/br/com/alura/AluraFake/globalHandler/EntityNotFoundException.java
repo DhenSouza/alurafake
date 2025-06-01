@@ -1,4 +1,4 @@
-package br.com.alura.AluraFake.exceptionhandler;
+package br.com.alura.AluraFake.globalHandler;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ResponseStatus;

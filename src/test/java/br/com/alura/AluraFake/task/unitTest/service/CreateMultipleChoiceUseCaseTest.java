@@ -20,6 +20,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
@@ -35,9 +36,8 @@ class CreateMultipleChoiceUseCaseTest {
     @Captor
     private ArgumentCaptor<Task> taskArgumentCaptor;
 
-    // --- Cenário 1: Teste para o método getType() ---
     @Test
-    @DisplayName("getType deve retornar Type.MULTIPLE_CHOICE")
+    @DisplayName("getType should return Type.MULTIPLE_CHOICE")
     void getType_shouldReturnMultipleChoice() {
         // Act
         Type actualType = createMultipleChoiceUseCase.getType();
@@ -47,7 +47,7 @@ class CreateMultipleChoiceUseCaseTest {
     }
 
     @Test
-    @DisplayName("execute com MultipleChoiceRequest válido deve construir Task com opções e chamar CourseTaskService")
+    @DisplayName("execute with valid MultipleChoice request should build Task with options and call CourseTaskService correctly")
     void execute_givenValidMultipleChoiceRequest_shouldBuildTaskWithOptionsAndCallServiceCorrectly() {
         // Arrange
         Long courseId = 10L;
@@ -82,12 +82,11 @@ class CreateMultipleChoiceUseCaseTest {
         assertThat(capturedTask.getOptions()).isNotNull();
         assertThat(capturedTask.getOptions()).hasSize(requestOptions.size());
 
-        for (int i = 0; i < requestOptions.size(); i++) {
-            ChoiceOptionRequest expectedDtoOption = requestOptions.get(i);
+        for (ChoiceOptionRequest expectedDtoOption : requestOptions) {
             TaskOption actualEntityOption = capturedTask.getOptions().stream()
                     .filter(to -> to.getOptionText().equals(expectedDtoOption.option()))
                     .findFirst()
-                    .orElseThrow(() -> new AssertionError("Opção mapeada não encontrada: " + expectedDtoOption.option()));
+                    .orElseThrow(() -> new AssertionError("Mapped option not found: " + expectedDtoOption.option()));
 
             assertThat(actualEntityOption.getOptionText()).isEqualTo(expectedDtoOption.option());
             assertThat(actualEntityOption.getIsCorrect()).isEqualTo(expectedDtoOption.isCorrect());
@@ -97,9 +96,8 @@ class CreateMultipleChoiceUseCaseTest {
         assertThat(correctOptionsInTask).isEqualTo(3);
     }
 
-
     @Test
-    @DisplayName("execute quando CourseTaskService lança exceção para MultipleChoice deve propagar a exceção")
+    @DisplayName("execute when CourseTaskService throws exception for MultipleChoice should propagate the exception")
     void execute_whenServiceThrowsExceptionForMultipleChoice_shouldPropagateException() {
         // Arrange
         Long courseId = 11L;

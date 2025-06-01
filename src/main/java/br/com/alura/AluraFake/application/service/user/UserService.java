@@ -5,7 +5,7 @@ import br.com.alura.AluraFake.api.dto.response.UserListItemDTO;
 import br.com.alura.AluraFake.application.interfaces.UserServiceInterface;
 import br.com.alura.AluraFake.domain.model.User;
 import br.com.alura.AluraFake.domain.repository.UserRepository;
-import br.com.alura.AluraFake.exceptionhandler.BusinessRuleException;
+import br.com.alura.AluraFake.globalHandler.BusinessRuleException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,7 +26,7 @@ public class UserService implements UserServiceInterface {
     @Transactional
     public User createUser(NewUserDTO newUser) {
         if(userRepository.existsByEmail(newUser.getEmail())) {
-            throw new BusinessRuleException("Já existe um usuário cadastrado com o e-mail: " + newUser.getEmail());
+            throw new BusinessRuleException("A user is already registered with the email: " + newUser.getEmail());
         }
         User user = newUser.toModel();
         user.setPassword(passwordEncoder.encode(user.getPassword()));

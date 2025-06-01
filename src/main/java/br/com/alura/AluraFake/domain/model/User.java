@@ -9,6 +9,7 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 @Entity
+@Setter
 public class User {
 
     @Getter
@@ -21,7 +22,7 @@ public class User {
     @Enumerated(EnumType.STRING)
     private Role role;
     private String email;
-    // Por questões didáticas, a senha será armazenada em texto plano.
+
     @Setter
     @Column(length = 100)
     private String password;

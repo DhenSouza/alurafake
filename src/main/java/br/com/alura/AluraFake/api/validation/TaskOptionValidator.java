@@ -1,7 +1,7 @@
 package br.com.alura.AluraFake.api.validation;
 
 import br.com.alura.AluraFake.api.dto.request.ChoiceOptionRequest;
-import br.com.alura.AluraFake.exceptionhandler.OptionalInvalidException;
+import br.com.alura.AluraFake.globalHandler.OptionalInvalidException;
 
 import java.util.HashSet;
 import java.util.List;
@@ -13,7 +13,7 @@ public class TaskOptionValidator {
         Set<String> uniqueOptions = new HashSet<>();
         for (ChoiceOptionRequest opt : options) {
             if (!uniqueOptions.add(opt.option().trim().toLowerCase())) {
-                throw new OptionalInvalidException("As alternativas não podem ser iguais entre si.");
+                throw new OptionalInvalidException("The options cannot be the same as each other.");
             }
         }
 
@@ -21,7 +21,7 @@ public class TaskOptionValidator {
             String normalizedStatement = statement.trim().toLowerCase();
             for (ChoiceOptionRequest opt : options) {
                 if (opt.option() != null && opt.option().trim().toLowerCase().equals(normalizedStatement)) {
-                    throw new OptionalInvalidException("As alternativas não podem ser iguais ao enunciado da atividade.");
+                    throw new OptionalInvalidException("The alternatives cannot be the same as the statement of the activity.");
                 }
             }
         }

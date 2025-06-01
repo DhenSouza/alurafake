@@ -24,6 +24,6 @@ public class TaskUseCaseFactory {
     @SuppressWarnings("unchecked")
     public <R extends TaskCreationRequest> CreateTaskUseCase<R> getUseCase(Type type) {
         return (CreateTaskUseCase<R>) Optional.ofNullable(useCaseMap.get(type))
-                .orElseThrow(() -> new IllegalArgumentException("Nenhum Use Case encontrado para o tipo de tarefa: " + type));
+                .orElseThrow(() -> new IllegalArgumentException("No Use Case found for the type of task: " + type));
     }
 }

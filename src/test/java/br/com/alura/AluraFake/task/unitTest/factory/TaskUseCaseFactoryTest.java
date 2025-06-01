@@ -1,4 +1,5 @@
 package br.com.alura.AluraFake.task.unitTest.factory;
+
 import br.com.alura.AluraFake.api.dto.request.TaskCreationRequest;
 import br.com.alura.AluraFake.application.factory.TaskUseCaseFactory;
 import br.com.alura.AluraFake.application.interfaces.CreateTaskUseCase;
@@ -17,7 +18,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 
-
 @ExtendWith(MockitoExtension.class)
 class TaskUseCaseFactoryTest {
 
@@ -28,9 +28,8 @@ class TaskUseCaseFactoryTest {
     @Mock
     private CreateTaskUseCase<TaskCreationRequest> mockAnotherOpenTextUseCase;
 
-
     @Test
-    @DisplayName("Construtor: Deve lançar IllegalArgumentException ao tentar obter UseCase se a factory foi construída com lista vazia")
+    @DisplayName("Constructor: Should throw IllegalArgumentException when factory is built with an empty list")
     void constructor_withEmptyList_getUseCaseShouldThrowException() {
         // Arrange
         List<CreateTaskUseCase<?>> emptyUseCasesList = Collections.emptyList();
@@ -40,11 +39,11 @@ class TaskUseCaseFactoryTest {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
             factory.getUseCase(Type.OPEN_TEXT);
         });
-        assertThat(exception.getMessage()).isEqualTo("Nenhum Use Case encontrado para o tipo de tarefa: OPEN_TEXT");
+        assertThat(exception.getMessage()).isEqualTo("No Use Case found for the type of task: OPEN_TEXT");
     }
 
     @Test
-    @DisplayName("Construtor: Deve registrar e permitir recuperação de múltiplos UseCases distintos")
+    @DisplayName("Constructor: Should register and allow retrieval of multiple distinct use cases")
     void constructor_withMultipleDifferentUseCases_shouldRegisterAndAllowRetrieval() {
         // Arrange
         when(mockOpenTextUseCase.getType()).thenReturn(Type.OPEN_TEXT);
@@ -61,18 +60,18 @@ class TaskUseCaseFactoryTest {
         assertThat(retrievedOpenTextUseCase).isSameAs(mockOpenTextUseCase);
         assertThat(retrievedSingleChoiceUseCase).isSameAs(mockSingleChoiceUseCase);
 
-        // Assert
         assertThatThrownBy(() -> factory.getUseCase(Type.MULTIPLE_CHOICE))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Nenhum Use Case encontrado para o tipo de tarefa: MULTIPLE_CHOICE");
+                .hasMessageContaining("No Use Case found for the type of task: MULTIPLE_CHOICE")
+                .hasMessage("No Use Case found for the type of task: MULTIPLE_CHOICE");
     }
 
     @Test
-    @DisplayName("Construtor: Deve retornar o último UseCase registrado se houver tipos duplicados")
+    @DisplayName("Constructor: Should return the last registered use case when duplicate types exist")
     void constructor_withDuplicateUseCaseTypes_shouldReturnLastRegistered() {
         // Arrange
         when(mockOpenTextUseCase.getType()).thenReturn(Type.OPEN_TEXT);
-        when(mockAnotherOpenTextUseCase.getType()).thenReturn(Type.OPEN_TEXT); // Mesmo tipo
+        when(mockAnotherOpenTextUseCase.getType()).thenReturn(Type.OPEN_TEXT); // Same type
 
         List<CreateTaskUseCase<?>> useCases = List.of(mockOpenTextUseCase, mockAnotherOpenTextUseCase);
         TaskUseCaseFactory factory = new TaskUseCaseFactory(useCases);
@@ -85,7 +84,7 @@ class TaskUseCaseFactoryTest {
     }
 
     @Test
-    @DisplayName("getUseCase: Deve lançar IllegalArgumentException se o tipo fornecido for nulo")
+    @DisplayName("getUseCase: Should throw IllegalArgumentException if provided type is null")
     void getUseCase_whenTypeIsNull_shouldThrowIllegalArgumentException() {
         // Arrange
         TaskUseCaseFactory factory = new TaskUseCaseFactory(Collections.emptyList());
@@ -95,11 +94,11 @@ class TaskUseCaseFactoryTest {
             factory.getUseCase(null);
         });
 
-        assertThat(exception.getMessage()).isEqualTo("Nenhum Use Case encontrado para o tipo de tarefa: null");
+        assertThat(exception.getMessage()).isEqualTo("No Use Case found for the type of task: null");
     }
 
     @Test
-    @DisplayName("getUseCase: Deve lançar IllegalArgumentException para um tipo não registrado")
+    @DisplayName("getUseCase: Should throw IllegalArgumentException for an unregistered type")
     void getUseCase_forUnregisteredType_shouldThrowIllegalArgumentException() {
         // Arrange
         when(mockOpenTextUseCase.getType()).thenReturn(Type.OPEN_TEXT);
@@ -112,6 +111,6 @@ class TaskUseCaseFactoryTest {
             factory.getUseCase(unregisteredType);
         });
 
-        assertThat(exception.getMessage()).isEqualTo("Nenhum Use Case encontrado para o tipo de tarefa: " + unregisteredType);
+        assertThat(exception.getMessage()).isEqualTo("No Use Case found for the type of task: " + unregisteredType);
     }
 }

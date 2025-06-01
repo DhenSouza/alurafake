@@ -36,12 +36,12 @@ public class UserController {
                 .buildAndExpand(createdUser.getId())
                 .toUri();*/
 
-        return ResponseEntity.status(HttpStatus.OK).build();
+        return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
     @GetMapping("/all")
     public ResponseEntity<List<UserListItemDTO>> listAllUsers() {
-        return ResponseEntity.status(HttpStatus.OK).body(userService.listAllUsers());
+        return ResponseEntity.ok(userService.listAllUsers());
     }
 
 }

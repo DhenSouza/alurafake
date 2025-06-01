@@ -24,12 +24,10 @@ public class AppUserDetailsService implements UserDetailsService {
     @Transactional(readOnly = true) // Boa prática para métodos de leitura
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
         User applicationUser = userRepository.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("Usuário com e-mail '" + email + "' não encontrado."));
+                .orElseThrow(() -> new UsernameNotFoundException("User with email '" + email + "' not found."));
 
         Set<GrantedAuthority> authorities = new HashSet<>();
-        // Adiciona o prefixo "ROLE_" para compatibilidade com hasRole()
         authorities.add(new SimpleGrantedAuthority("ROLE_" + applicationUser.getRole().name()));
-        // Se o usuário tivesse uma lista de roles, você iteraria e adicionaria todas.
 
         return new org.springframework.security.core.userdetails.User(
                 applicationUser.getEmail(),

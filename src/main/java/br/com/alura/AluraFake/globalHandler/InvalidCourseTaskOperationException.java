@@ -1,4 +1,4 @@
-package br.com.alura.AluraFake.exceptionhandler;
+package br.com.alura.AluraFake.globalHandler;
 
 public class InvalidCourseTaskOperationException extends RuntimeException {
     public InvalidCourseTaskOperationException(String message) {

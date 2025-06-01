@@ -1,4 +1,4 @@
-package br.com.alura.AluraFake.exceptionhandler.dto;
+package br.com.alura.AluraFake.globalHandler.dto;
 
 import java.util.List;
 
