@@ -4,14 +4,20 @@ import br.com.alura.AluraFake.api.controller.CourseController;
 import br.com.alura.AluraFake.api.dto.request.NewCourseDTO;
 import br.com.alura.AluraFake.api.dto.response.CourseListItemDTO;
 import br.com.alura.AluraFake.application.interfaces.CourseServiceInterface;
+import br.com.alura.AluraFake.domain.enumeration.Role;
 import br.com.alura.AluraFake.domain.enumeration.Status;
 import br.com.alura.AluraFake.domain.model.Course;
 import br.com.alura.AluraFake.domain.model.User;
-import br.com.alura.AluraFake.exceptionhandler.BusinessRuleException;
-import br.com.alura.AluraFake.exceptionhandler.EntityNotFoundException;
-import br.com.alura.AluraFake.exceptionhandler.GlobalExceptionHandler;
-import br.com.alura.AluraFake.exceptionhandler.ResourceNotFoundException;
-import br.com.alura.AluraFake.exceptionhandler.dto.ProblemType;
+import br.com.alura.AluraFake.domain.repository.UserRepository;
+import br.com.alura.AluraFake.domain.service.AppUserDetailsService;
+import br.com.alura.AluraFake.globalHandler.BusinessRuleException;
+import br.com.alura.AluraFake.globalHandler.EntityNotFoundException;
+import br.com.alura.AluraFake.globalHandler.GlobalExceptionHandler;
+import br.com.alura.AluraFake.globalHandler.ResourceNotFoundException;
+import br.com.alura.AluraFake.globalHandler.dto.ProblemType;
+import br.com.alura.AluraFake.security.JwtAuthenticationFilter;
+import br.com.alura.AluraFake.security.JwtTokenUtil;
+import br.com.alura.AluraFake.security.SecurityConfiguration;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -25,6 +31,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
@@ -41,7 +48,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @ExtendWith(SpringExtension.class)
 @WebMvcTest(CourseController.class)
-@Import(GlobalExceptionHandler.class)
+@Import({GlobalExceptionHandler.class, SecurityConfiguration.class, JwtTokenUtil.class, JwtAuthenticationFilter.class, AppUserDetailsService.class})
 class CourseControllerTest {
 
     @Autowired
@@ -52,6 +59,9 @@ class CourseControllerTest {
 
     @MockBean
     private CourseServiceInterface courseServiceMock;
+
+    @MockBean
+    private UserRepository userRepositoryMock;
 
     @Captor
     private ArgumentCaptor<NewCourseDTO> newCourseDTOCaptor;
@@ -69,16 +79,17 @@ class CourseControllerTest {
         validNewCourseDTO.setDescription("Aprenda tópicos avançados");
         validNewCourseDTO.setEmailInstructor("instructor@example.com");
 
-        instructor = new User("Taina", "Taina@email.com", br.com.alura.AluraFake.domain.enumeration.Role.INSTRUCTOR, "senha123"); // Use seu enum Role aqui
+        instructor = new User("Taina", "Taina@email.com", Role.INSTRUCTOR, "senha123");
 
         createdCourse = new Course("Curso de Java Avançado", "Aprenda tópicos avançados", instructor);
         createdCourse.setId(1L);
         createdCourse.setStatus(Status.BUILDING);
-
+        createdCourse.setPublishedAt(LocalDateTime.now());
     }
 
     @Test
-    @DisplayName("POST /course/new: Deve criar curso com DTO válido e retornar Status 201 Created")
+    @WithMockUser(roles = "INSTRUCTOR")
+    @DisplayName("POST /course/new: Should create course with valid DTO and return 201 Created")
     void createCourse_withValidDTO_shouldReturnCreated() throws Exception {
         // Arrange
         when(courseServiceMock.createNewCourse(any(NewCourseDTO.class))).thenReturn(createdCourse);
@@ -96,7 +107,8 @@ class CourseControllerTest {
     }
 
     @Test
-    @DisplayName("POST /course/new: Não deve criar curso com DTO inválido e retornar Status 400 Bad Request")
+    @WithMockUser(roles = "INSTRUCTOR")
+    @DisplayName("POST /course/new: Should return 400 Bad Request when DTO is invalid")
     void createCourse_withInvalidDTO_shouldReturnBadRequest() throws Exception {
         // Arrange
         NewCourseDTO invalidDto = new NewCourseDTO();
@@ -121,7 +133,8 @@ class CourseControllerTest {
     }
 
     @Test
-    @DisplayName("POST /course/new: Deve retornar Status 404 se instrutor não for encontrado pelo serviço")
+    @WithMockUser(roles = "INSTRUCTOR")
+    @DisplayName("POST /course/new: Should return 404 Not Found when instructor is not found by service")
     void createCourse_whenInstructorNotFoundByService_shouldReturnNotFound() throws Exception {
         // Arrange
         String errorMessage = "Instrutor não encontrado com e-mail: " + validNewCourseDTO.getEmailInstructor();
@@ -143,10 +156,11 @@ class CourseControllerTest {
     }
 
     @Test
-    @DisplayName("GET /course/all: Deve listar cursos e retornar Status 200 OK com lista detalhada")
+    @WithMockUser(roles = "INSTRUCTOR")
+    @DisplayName("GET /course/all: Should list courses and return 200 OK with detailed course list")
     void listAllCourses_whenCoursesExist_shouldReturnOkWithDetailedCourseList() throws Exception {
         // Arrange
-        User instructor = new User("Nome Instrutor", "instrutor@example.com", br.com.alura.AluraFake.domain.enumeration.Role.INSTRUCTOR, "password"); // Use seu enum Role
+        User instructor = new User("Nome Instrutor", "instrutor@example.com", Role.INSTRUCTOR, "password");
 
         Course course1 = new Course("Curso de Java Completo", "Aprenda Java do básico ao avançado", instructor);
         course1.setId(1L);
@@ -170,12 +184,10 @@ class CourseControllerTest {
         resultActions
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(expectedCourseDtoList.size()))
-
                 .andExpect(jsonPath("$[0].id").value(dto1.getId()))
                 .andExpect(jsonPath("$[0].title").value(dto1.getTitle()))
                 .andExpect(jsonPath("$[0].description").value(dto1.getDescription()))
                 .andExpect(jsonPath("$[0].status").value(dto1.getStatus().toString()))
-
                 .andExpect(jsonPath("$[1].id").value(dto2.getId()))
                 .andExpect(jsonPath("$[1].title").value(dto2.getTitle()))
                 .andExpect(jsonPath("$[1].description").value(dto2.getDescription()))
@@ -185,7 +197,8 @@ class CourseControllerTest {
     }
 
     @Test
-    @DisplayName("GET /course/all: Deve retornar Status 200 OK com lista vazia se não houver cursos")
+    @WithMockUser(roles = "INSTRUCTOR")
+    @DisplayName("GET /course/all: Should return 200 OK with empty list when no courses exist")
     void listAllCourses_whenNoCoursesExist_shouldReturnOkWithEmptyList() throws Exception {
         // Arrange
         when(courseServiceMock.listAllCourses()).thenReturn(Collections.emptyList());
@@ -203,7 +216,8 @@ class CourseControllerTest {
     }
 
     @Test
-    @DisplayName("POST /course/{id}/publish: Deve publicar curso com sucesso e retornar Status 201 Created")
+    @WithMockUser(roles = "INSTRUCTOR")
+    @DisplayName("POST /course/{id}/publish: Should publish course and return 201 Created")
     void publishCourse_withValidIdAndConditions_shouldReturnCreated() throws Exception {
         // Arrange
         Long courseIdToPublish = 1L;
@@ -220,7 +234,8 @@ class CourseControllerTest {
     }
 
     @Test
-    @DisplayName("POST /course/{id}/publish: Deve retornar Status 404 se curso a ser publicado não for encontrado")
+    @WithMockUser(roles = "INSTRUCTOR")
+    @DisplayName("POST /course/{id}/publish: Should return 404 Not Found if course to publish is not found")
     void publishCourse_whenCourseIdNotFound_shouldReturnNotFound() throws Exception {
         // Arrange
         Long nonExistentCourseId = 999L;
@@ -239,14 +254,13 @@ class CourseControllerTest {
                 .andExpect(jsonPath("$.detail").value(errorMessage));
     }
 
-// Dentro da sua classe CourseControllerTest
-
     @Test
-    @DisplayName("POST /course/{id}/publish: Deve retornar Status 400 se regra de negócio for violada (ex: status não é BUILDING)")
+    @WithMockUser(roles = "INSTRUCTOR")
+    @DisplayName("POST /course/{id}/publish: Should return 400 Bad Request if business rule is violated (e.g., status is not BUILDING)")
     void publishCourse_whenBusinessRuleViolated_shouldReturnBadRequest() throws Exception {
         // Arrange
         Long courseId = 1L;
-        String courseTitleForTest = "Curso Já Publicado Para Teste";
+        String courseTitleForTest = "Already Published Course for Test";
 
         createdCourse.setTitle(courseTitleForTest);
         createdCourse.setStatus(Status.PUBLISHED);
@@ -262,7 +276,7 @@ class CourseControllerTest {
 
         // Act
         ResultActions resultActions = mockMvc.perform(post("/course/{id}/publish", courseId)
-                .contentType(MediaType.APPLICATION_JSON)); // Adicionar contentType é uma boa prática
+                .contentType(MediaType.APPLICATION_JSON));
 
         // Assert
         String expectedTypeUri = errorBaseUri + ProblemType.INVALID_OPERATION.getPath();
@@ -281,11 +295,12 @@ class CourseControllerTest {
     }
 
     @Test
-    @DisplayName("POST /course/{id}/publish: Deve retornar Status 500 se ocorrer erro inesperado no serviço")
+    @WithMockUser(roles = "INSTRUCTOR")
+    @DisplayName("POST /course/{id}/publish: Should return 500 Internal Server Error if unexpected error occurs in service")
     void publishCourse_whenServiceThrowsRuntimeException_shouldReturnInternalServerError() throws Exception {
         // Arrange
         Long courseId = 1L;
-        when(courseServiceMock.publish(courseId)).thenThrow(new RuntimeException("Erro interno inesperado"));
+        when(courseServiceMock.publish(courseId)).thenThrow(new RuntimeException("Unexpected internal error"));
 
         // Act
         ResultActions resultActions = mockMvc.perform(post("/course/{id}/publish", courseId));

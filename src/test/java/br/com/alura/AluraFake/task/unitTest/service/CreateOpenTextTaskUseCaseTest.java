@@ -22,10 +22,10 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 public class CreateOpenTextTaskUseCaseTest {
 
-    @Mock // Cria um mock para CourseTaskService
+    @Mock
     private CourseTaskService courseTaskServiceMock;
 
-    @InjectMocks // Cria uma instância de CreateOpenTextTaskUseCase e injeta os mocks nela
+    @InjectMocks
     private CreateOpenTextTaskUseCase createOpenTextTaskUseCase;
 
     @Captor
@@ -41,7 +41,7 @@ public class CreateOpenTextTaskUseCaseTest {
     }
 
     @Test
-    @DisplayName("execute com request válido deve construir Task e chamar CourseTaskService corretamente")
+    @DisplayName("Execute with a valid request must construct Task and call CourseTaskService correctly.")
     void execute_givenValidRequest_shouldBuildTaskAndCallServiceWithCorrectParameters() {
         // Arrange
         Long courseId = 1L;
@@ -49,7 +49,6 @@ public class CreateOpenTextTaskUseCaseTest {
         Integer order = 3;
         Type type = Type.OPEN_TEXT;
         OpenTextTaskCreationRequest request = new OpenTextTaskCreationRequest(courseId, statement, order, type);
-
 
         // Act
         createOpenTextTaskUseCase.execute(request);
@@ -68,7 +67,7 @@ public class CreateOpenTextTaskUseCaseTest {
     }
 
     @Test
-    @DisplayName("execute quando CourseTaskService lança exceção deve propagar a exceção")
+    @DisplayName("execute when CourseTaskService throws an exception must propagate the exception")
     void execute_whenServiceThrowsException_shouldPropagateException() {
         // Arrange
         Long courseId = 2L;
@@ -82,7 +81,7 @@ public class CreateOpenTextTaskUseCaseTest {
 
 
         doThrow(simulatedException).when(courseTaskServiceMock).addTaskToCourseAtPosition(
-                anyLong(),   // Pode usar any() ou eq() para os argumentos
+                anyLong(),
                 any(Task.class),
                 anyInt()
         );

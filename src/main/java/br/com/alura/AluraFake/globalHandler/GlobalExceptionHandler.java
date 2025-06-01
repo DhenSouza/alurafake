@@ -1,9 +1,9 @@
-package br.com.alura.AluraFake.exceptionhandler;
+package br.com.alura.AluraFake.globalHandler;
 
-import br.com.alura.AluraFake.exceptionhandler.dto.ErrorField;
-import br.com.alura.AluraFake.exceptionhandler.dto.ErrorResponse;
-import br.com.alura.AluraFake.exceptionhandler.dto.ParsedExceptionDetails;
-import br.com.alura.AluraFake.exceptionhandler.dto.ProblemType;
+import br.com.alura.AluraFake.globalHandler.dto.ErrorField;
+import br.com.alura.AluraFake.globalHandler.dto.ErrorResponse;
+import br.com.alura.AluraFake.globalHandler.dto.ParsedExceptionDetails;
+import br.com.alura.AluraFake.globalHandler.dto.ProblemType;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import jakarta.validation.ConstraintViolationException;
@@ -13,7 +13,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
-import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -184,7 +183,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             Exception ex,
             WebRequest request) {
 
-        logger.error("Erro inesperado capturado: ", ex);
+        logger.error("Unexpected error captured: ", ex);
         String uri = ((ServletWebRequest) request).getRequest().getRequestURI();
         ErrorResponse errorResponse = new ErrorResponse(
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
@@ -197,7 +196,6 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
-    // Auxiliares para handleHttpMessageNotReadable
 
     private ResponseEntity<Object> buildResponseForOptionalInvalid(
             OptionalInvalidException ex,
@@ -274,12 +272,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             HttpHeaders headers,
             HttpStatusCode status) {
 
-        String detail = "O corpo da requisição está inválido, ilegível ou ocorreu um problema durante o processamento inicial.";
         ErrorResponse errorResponse = new ErrorResponse(
                 status.value(),
                 errorBaseUri + ProblemType.GENERIC_MESSAGE_NOT_READABLE.getPath(),
                 ProblemType.GENERIC_MESSAGE_NOT_READABLE.getTitle(),
-                detail,
+                ex.getCause().getMessage(),
                 requestUri,
                 ProblemType.GENERIC_MESSAGE_NOT_READABLE.getMessage()
         );
@@ -287,17 +284,17 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     private ParsedExceptionDetails handleJsonParseException(JsonParseException json) {
-        String detailMsg = String.format("Erro de sintaxe JSON na localização: linha %d, coluna %d. Verifique o JSON enviado.",
+        String detailMsg = String.format("JSON syntax error at location: line %d, column %d. Check the submitted JSON.",
                 json.getLocation().getLineNr(), json.getLocation().getColumnNr());
         return new ParsedExceptionDetails(detailMsg, null);
     }
 
     private ParsedExceptionDetails handleInvalidFormatException(InvalidFormatException invalidFormat) {
         String fieldPath = formatFieldPath(invalidFormat.getPath());
-        String detailMsg = String.format("O valor '%s' fornecido para o campo '%s' não é do tipo esperado (%s).",
+        String detailMsg = String.format("The value '%s' provided for the field '%s' is not of the expected type (%s).",
                 invalidFormat.getValue(), fieldPath, invalidFormat.getTargetType().getSimpleName());
         List<ErrorField> fields = List.of(
-                new ErrorField(fieldPath, String.format("Valor '%s' inválido. Forneça um valor do tipo %s.",
+                new ErrorField(fieldPath, String.format("Invalid value '%s'. Please provide a value of type %s.",
                         invalidFormat.getValue(), invalidFormat.getTargetType().getSimpleName()))
         );
 
@@ -323,7 +320,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 uri,
                 ex.getMessage()
         );
-        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST); // Ou HttpStatus.UNPROCESSABLE_ENTITY
+        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(EntityNotFoundException.class)

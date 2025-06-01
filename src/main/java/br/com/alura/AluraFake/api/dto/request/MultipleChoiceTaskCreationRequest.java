@@ -32,14 +32,14 @@ public record MultipleChoiceTaskCreationRequest(
 ) implements ChoiceTaskCreationRequest  {
         public MultipleChoiceTaskCreationRequest {
                 if (options == null) {
-                        throw new IllegalArgumentException("A lista de opções não pode ser nula para múltipla escolha.");
+                        throw new IllegalArgumentException("The list of options cannot be null for multiple choice.");
                 }
 
                 long correctCount = options.stream().filter(ChoiceOptionRequest::isCorrect).count();
                 long incorrectCount = options.size() - correctCount;
 
                 if (correctCount < 2 || incorrectCount < 1) {
-                        throw new IllegalArgumentException("São necessárias duas ou mais alternativas corretas e ao menos uma alternativa incorreta para Multiple Choice.");
+                        throw new IllegalArgumentException("Two or more correct alternatives and at least one incorrect alternative are required for Multiple Choice.");
                 }
 
                 TaskOptionValidator.validateUniqueAndStatementComparison(statement, options);

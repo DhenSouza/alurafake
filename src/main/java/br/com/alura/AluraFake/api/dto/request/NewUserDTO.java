@@ -53,7 +53,7 @@ public class NewUserDTO {
     }
 
     public User toModel() {
-        return new User(name, email, role);
+        return new User(name, email, role, password);
     }
 
 }

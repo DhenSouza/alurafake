@@ -23,7 +23,7 @@ public interface TaskCreationRequest {
     @NotNull
     Long courseId();
 
-    @Size(min = 4, max = 255, message = "O enunciado deve ter entre 4 e 255 caractere")
+    @Size(min = 4, max = 255, message = "The statement must be between 4 and 255 characters.")
     @NotNull
     String statement();
 

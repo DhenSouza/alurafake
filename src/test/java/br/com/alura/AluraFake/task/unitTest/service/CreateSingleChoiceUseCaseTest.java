@@ -36,7 +36,7 @@ class CreateSingleChoiceUseCaseTest {
     private ArgumentCaptor<Task> taskArgumentCaptor;
 
     @Test
-    @DisplayName("getType deve retornar Type.SINGLE_CHOICE")
+    @DisplayName("getType should return Type.SINGLE_CHOICE")
     void getType_shouldReturnSingleChoice() {
         // Act
         Type actualType = createSingleChoiceUseCase.getType();
@@ -46,7 +46,7 @@ class CreateSingleChoiceUseCaseTest {
     }
 
     @Test
-    @DisplayName("execute com SingleChoiceRequest válido deve construir Task com opções e chamar CourseTaskService corretamente")
+    @DisplayName("Executing with a valid SingleChoiceRequest must build a Task with options and call CourseTaskService correctly.")
     void execute_givenValidSingleChoiceRequest_shouldBuildTaskWithOptionsAndCallServiceCorrectly() {
         // Arrange
         Long courseId = 1L;
@@ -90,7 +90,7 @@ class CreateSingleChoiceUseCaseTest {
     }
 
     @Test
-    @DisplayName("execute quando CourseTaskService lança exceção deve propagar a exceção")
+    @DisplayName("execute when CourseTaskService throws an exception must propagate the exception")
     void execute_whenCourseTaskServiceThrowsException_shouldPropagateException() {
         // Arrange
         Long courseId = 2L;
@@ -104,7 +104,7 @@ class CreateSingleChoiceUseCaseTest {
                 courseId, statement, order, Type.SINGLE_CHOICE, requestOptions
         );
 
-        String serviceErrorMessage = "Erro simulado ao tentar adicionar tarefa ao curso";
+        String serviceErrorMessage = "Simulated error when trying to add task to the course";
 
         RuntimeException simulatedServiceException = new RuntimeException(serviceErrorMessage);
 
@@ -123,7 +123,7 @@ class CreateSingleChoiceUseCaseTest {
 
         verify(courseTaskServiceMock, times(1)).addTaskToCourseAtPosition(
                 eq(courseId),
-                any(Task.class), // A Task ainda seria construída e passada
+                any(Task.class),
                 eq(order)
         );
     }

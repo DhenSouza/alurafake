@@ -9,9 +9,9 @@ import br.com.alura.AluraFake.domain.model.Course;
 import br.com.alura.AluraFake.domain.model.User;
 import br.com.alura.AluraFake.domain.repository.CourseRepository;
 import br.com.alura.AluraFake.domain.repository.UserRepository;
-import br.com.alura.AluraFake.exceptionhandler.BusinessRuleException;
-import br.com.alura.AluraFake.exceptionhandler.EntityNotFoundException;
-import br.com.alura.AluraFake.exceptionhandler.ResourceNotFoundException;
+import br.com.alura.AluraFake.globalHandler.BusinessRuleException;
+import br.com.alura.AluraFake.globalHandler.EntityNotFoundException;
+import br.com.alura.AluraFake.globalHandler.ResourceNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,7 +41,7 @@ public class CourseService implements CourseServiceInterface {
                 .filter(User::isInstructor)
                 .orElseThrow(() ->
                         new EntityNotFoundException(
-                                "Instrutor não encontrado com e-mail: " + courseDTO.getEmailInstructor()
+                                "Instructor not found with email: " + courseDTO.getEmailInstructor()
                         )
                 );
 
@@ -50,6 +50,8 @@ public class CourseService implements CourseServiceInterface {
                 courseDTO.getDescription(),
                 author
         );
+
+        course.setPublishedAt(LocalDateTime.now());
 
         return courseRepository.save(course);
     }
@@ -66,11 +68,11 @@ public class CourseService implements CourseServiceInterface {
     @Transactional
     public Course publish(Long courseId) {
         Course course = courseRepository.findById(courseId)
-                .orElseThrow(() -> new ResourceNotFoundException("Curso não encontrado com ID: " + courseId));
+                .orElseThrow(() -> new ResourceNotFoundException("Course not found with ID: " + courseId));
 
         if (course.getStatus() != Status.BUILDING) {
             throw new BusinessRuleException(String.format(
-                    "O curso '%s' não pode ser publicado pois seu status é '%s'. Apenas cursos em 'BUILDING' são permitidos.",
+                    "The course '%s' cannot be published because its status is '%s'. Only courses in 'BUILDING' are allowed.",
                     course.getTitle(),
                     course.getStatus()));
         }

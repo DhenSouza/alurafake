@@ -6,8 +6,8 @@ import br.com.alura.AluraFake.domain.model.Course;
 import br.com.alura.AluraFake.domain.model.Task;
 import br.com.alura.AluraFake.domain.repository.CourseRepository;
 import br.com.alura.AluraFake.domain.repository.TaskRepository;
-import br.com.alura.AluraFake.exceptionhandler.InvalidCourseTaskOperationException;
-import br.com.alura.AluraFake.exceptionhandler.ResourceNotFoundException;
+import br.com.alura.AluraFake.globalHandler.InvalidCourseTaskOperationException;
+import br.com.alura.AluraFake.globalHandler.ResourceNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -64,11 +64,11 @@ class CourseTaskServiceTest {
 
         newTask = new Task();
         newTask.setId(103L);
-        newTask.setStatement("Nova Tarefa");
+        newTask.setStatement("New Task");
     }
 
     @Test
-    @DisplayName("addTaskToCourseAtPosition: Adicionar tarefa em curso vazio na posição 1")
+    @DisplayName("addTaskToCourseAtPosition: Should add task successfully when course is empty and position is one")
     void addTaskToCourseAtPosition_whenCourseIsEmptyAndPositionIsOne_shouldAddTaskSuccessfully() {
         // Arrange
         when(courseRepositoryMock.findById(1L)).thenReturn(Optional.of(course));
@@ -88,13 +88,14 @@ class CourseTaskServiceTest {
     }
 
     @Test
-    @DisplayName("addTaskToCourseAtPosition: Adicionar tarefa no meio de curso com tarefas existentes")
+    @DisplayName("addTaskToCourseAtPosition: Should reorder and add task when inserting into middle of existing tasks")
     void addTaskToCourseAtPosition_whenAddingToMiddleOfExistingTasks_shouldReorderAndAddTask() {
         // Arrange
-        // Ordem 1
         course.getTasks().add(task1);
-        // Será ordem 2 original
-        Task task3 = new Task(); task3.setId(104L); task3.setOrder(2); task3.setCourse(course);
+        Task task3 = new Task();
+        task3.setId(104L);
+        task3.setOrder(2);
+        task3.setCourse(course);
         course.getTasks().add(task3);
 
         when(courseRepositoryMock.findById(1L)).thenReturn(Optional.of(course));
@@ -107,52 +108,54 @@ class CourseTaskServiceTest {
         verify(taskRepositoryMock).save(taskArgumentCaptor.capture());
         Task savedNewTask = taskArgumentCaptor.getValue();
 
-        // newTask fica na posição 2
         assertThat(savedNewTask.getOrder()).isEqualTo(2);
-        // task1 mantém a posição 1
         assertThat(task1.getOrder()).isEqualTo(1);
-        // task3 (originalmente 2) é movida para 3
         assertThat(task3.getOrder()).isEqualTo(3);
 
-        assertThat(updatedCourse.getTasks()).containsExactlyInAnyOrder(task1, savedNewTask, task3);
-        assertThat(updatedCourse.getTasks()).extracting(Task::getOrder).containsExactly(1, 3, 2);
+        assertThat(updatedCourse.getTasks())
+                .containsExactlyInAnyOrder(task1, savedNewTask, task3);
+        assertThat(updatedCourse.getTasks())
+                .extracting(Task::getOrder)
+                .containsExactly(1, 3, 2);
     }
 
     @Test
-    @DisplayName("addTaskToCourseAtPosition: Deve lançar ResourceNotFoundException se curso não encontrado")
+    @DisplayName("addTaskToCourseAtPosition: Should throw ResourceNotFoundException when course not found")
     void addTaskToCourseAtPosition_whenCourseNotFound_shouldThrowResourceNotFoundException() {
         // Arrange
         when(courseRepositoryMock.findById(99L)).thenReturn(Optional.empty());
 
         // Act & Assert
-        ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> {
-            courseTaskService.addTaskToCourseAtPosition(99L, newTask, 1);
-        });
-        assertThat(exception.getMessage()).isEqualTo("Curso não encontrado com ID: 99");
+        ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () ->
+                courseTaskService.addTaskToCourseAtPosition(99L, newTask, 1)
+        );
+        assertThat(exception.getMessage()).isEqualTo("Course not found with ID: 99");
         verify(taskRepositoryMock, never()).save(any());
     }
 
     @Test
-    @DisplayName("addTaskToCourseAtPosition: Deve lançar InvalidCourseTaskOperationException se posição for inválida (muito alta)")
+    @DisplayName("addTaskToCourseAtPosition: Should throw InvalidCourseTaskOperationException when position is too high")
     void addTaskToCourseAtPosition_whenPositionIsTooHigh_shouldThrowInvalidCourseTaskOperationException() {
         // Arrange
         course.getTasks().add(task1);
         when(courseRepositoryMock.findById(1L)).thenReturn(Optional.of(course));
 
-        // Act & Assert: Posição 3 é inválida (permitido seria 1 ou 2)
-        InvalidCourseTaskOperationException exception = assertThrows(InvalidCourseTaskOperationException.class, () -> {
-            courseTaskService.addTaskToCourseAtPosition(1L, newTask, 3);
-        });
-        assertThat(exception.getMessage()).isEqualTo("Ordem de tarefa inválida. A ordem deve ser contínua e estar entre 1 e 2.");
+        // Act & Assert
+        InvalidCourseTaskOperationException exception = assertThrows(InvalidCourseTaskOperationException.class, () ->
+                courseTaskService.addTaskToCourseAtPosition(1L, newTask, 3)
+        );
+        assertThat(exception.getMessage()).isEqualTo("Invalid task order. The order must be continuous and between 1 and 2.");
     }
 
     @Test
-    @DisplayName("removeTaskFromCourse: Remover tarefa do meio e reordenar restantes")
+    @DisplayName("removeTaskFromCourse: Should reorder remaining tasks when removing a middle task")
     void removeTaskFromCourse_whenRemovingMiddleTask_shouldReorderRemainingTasks() {
         // Arrange
         course.getTasks().addAll(List.of(task1, task2, newTask));
-        newTask.setOrder(3); newTask.setCourse(course);
-        task1.setOrder(1); task2.setOrder(2);
+        newTask.setOrder(3);
+        newTask.setCourse(course);
+        task1.setOrder(1);
+        task2.setOrder(2);
 
         when(courseRepositoryMock.findById(1L)).thenReturn(Optional.of(course));
         when(taskRepositoryMock.findById(task2.getId())).thenReturn(Optional.of(task2));
@@ -164,16 +167,17 @@ class CourseTaskServiceTest {
         assertThat(updatedCourse.getTasks()).doesNotContain(task2);
         assertThat(updatedCourse.getTasks()).hasSize(2);
 
-        // Verifica reordenamento
-        Task remainingTask1 = updatedCourse.getTasks().stream().filter(t -> t.getId().equals(task1.getId())).findFirst().orElseThrow();
-        Task remainingNewTask = updatedCourse.getTasks().stream().filter(t -> t.getId().equals(newTask.getId())).findFirst().orElseThrow();
+        Task remainingTask1 = updatedCourse.getTasks()
+                .stream().filter(t -> t.getId().equals(task1.getId())).findFirst().orElseThrow();
+        Task remainingNewTask = updatedCourse.getTasks()
+                .stream().filter(t -> t.getId().equals(newTask.getId())).findFirst().orElseThrow();
 
         assertThat(remainingTask1.getOrder()).isEqualTo(1);
         assertThat(remainingNewTask.getOrder()).isEqualTo(2);
     }
 
     @Test
-    @DisplayName("removeTaskFromCourse: Remover única tarefa do curso")
+    @DisplayName("removeTaskFromCourse: Should result in empty task list when removing the only task")
     void removeTaskFromCourse_whenRemovingOnlyTask_shouldResultInEmptyTaskList() {
         // Arrange
         course.getTasks().add(task1);
@@ -188,99 +192,94 @@ class CourseTaskServiceTest {
     }
 
     @Test
-    @DisplayName("removeTaskFromCourse: Deve lançar ResourceNotFoundException se curso não for encontrado")
+    @DisplayName("removeTaskFromCourse: Should throw ResourceNotFoundException when course not found")
     void removeTaskFromCourse_whenCourseNotFound_shouldThrowResourceNotFoundException() {
         // Arrange
         when(courseRepositoryMock.findById(99L)).thenReturn(Optional.empty());
 
         // Act & Assert
-        ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> {
-            courseTaskService.removeTaskFromCourse(99L, 101L);
-        });
-        assertThat(exception.getMessage()).isEqualTo("Curso não encontrado com ID: 99");
+        ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () ->
+                courseTaskService.removeTaskFromCourse(99L, 101L)
+        );
+        assertThat(exception.getMessage()).isEqualTo("Course not found with ID: 99");
     }
 
     @Test
-    @DisplayName("removeTaskFromCourse: Deve lançar ResourceNotFoundException se tarefa não for encontrada")
+    @DisplayName("removeTaskFromCourse: Should throw ResourceNotFoundException when task not found")
     void removeTaskFromCourse_whenTaskNotFound_shouldThrowResourceNotFoundException() {
         // Arrange
         when(courseRepositoryMock.findById(1L)).thenReturn(Optional.of(course));
         when(taskRepositoryMock.findById(999L)).thenReturn(Optional.empty());
 
         // Act & Assert
-        ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> {
-            courseTaskService.removeTaskFromCourse(1L, 999L);
-        });
-        assertThat(exception.getMessage()).isEqualTo("Tarefa não encontrada com ID: 999");
+        ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () ->
+                courseTaskService.removeTaskFromCourse(1L, 999L)
+        );
+        assertThat(exception.getMessage()).isEqualTo("Task not found with ID: 999");
     }
 
     @Test
-    @DisplayName("removeTaskFromCourse: Deve lançar InvalidCourseTaskOperationException se tarefa não pertence ao curso")
+    @DisplayName("removeTaskFromCourse: Should throw InvalidCourseTaskOperationException when task does not belong to course")
     void removeTaskFromCourse_whenTaskDoesNotBelongToCourse_shouldThrowInvalidCourseTaskOperationException() {
         // Arrange
-        Course otherCourse = new Course(); otherCourse.setId(2L);
+        Course otherCourse = new Course();
+        otherCourse.setId(2L);
         task1.setCourse(otherCourse);
 
         when(courseRepositoryMock.findById(1L)).thenReturn(Optional.of(course));
         when(taskRepositoryMock.findById(task1.getId())).thenReturn(Optional.of(task1));
 
         // Act & Assert
-        InvalidCourseTaskOperationException exception = assertThrows(InvalidCourseTaskOperationException.class, () -> {
-            courseTaskService.removeTaskFromCourse(1L, task1.getId());
-        });
-        assertThat(exception.getMessage()).isEqualTo("A tarefa com ID " + task1.getId() + " não pertence ao curso com ID: 1");
+        InvalidCourseTaskOperationException exception = assertThrows(InvalidCourseTaskOperationException.class, () ->
+                courseTaskService.removeTaskFromCourse(1L, task1.getId())
+        );
+        assertThat(exception.getMessage())
+                .isEqualTo("The task with ID " + task1.getId() + " does not belong to the course with ID: 1");
     }
 
     @Test
-    @DisplayName("addTaskToCourseAtPosition: Deve lançar InvalidCourseTaskOperationException se enunciado da nova tarefa já existir no curso")
+    @DisplayName("addTaskToCourseAtPosition: Should throw InvalidCourseTaskOperationException when new task statement already exists in course")
     void addTaskToCourseAtPosition_whenNewTaskStatementAlreadyExistsInCourse_shouldThrowInvalidCourseTaskOperationException() {
         // Arrange
-        String enunciadoExistente = "Qual é a cor do céu?";
-        task1.setStatement(enunciadoExistente);
+        String existingStatement = "What is the color of the sky?";
+        task1.setStatement(existingStatement);
         course.getTasks().add(task1);
 
         when(courseRepositoryMock.findById(1L)).thenReturn(Optional.of(course));
 
-        newTask.setStatement("qual é A COR DO CÉU?  ");
-
-        String mensagemEsperada = "O curso já possui uma questão com o enunciado: '" + newTask.getStatement() + "'";
-
+        newTask.setStatement("  WHAT IS the COLOR OF THE SKY?  ");
+        String expectedMessage = "The course already has a question with the statement: '" + newTask.getStatement() + "'";
 
         // Act & Assert
-        InvalidCourseTaskOperationException exception = assertThrows(InvalidCourseTaskOperationException.class, () -> {
-            courseTaskService.addTaskToCourseAtPosition(1L, newTask, 2);
-        });
-
-        assertThat(exception.getMessage()).isEqualTo(mensagemEsperada);
+        InvalidCourseTaskOperationException exception = assertThrows(InvalidCourseTaskOperationException.class, () ->
+                courseTaskService.addTaskToCourseAtPosition(1L, newTask, 2)
+        );
+        assertThat(exception.getMessage()).isEqualTo(expectedMessage);
 
         verify(taskRepositoryMock, never()).save(any(Task.class));
     }
 
     @Test
-    @DisplayName("addTaskToCourseAtPosition: Deve lançar InvalidCourseTaskOperationException se status do curso não for BUILDING")
+    @DisplayName("addTaskToCourseAtPosition: Should throw InvalidCourseTaskOperationException when course status is not BUILDING")
     void addTaskToCourseAtPosition_whenCourseStatusIsNotBuilding_shouldThrowInvalidCourseTaskOperationException() {
         // Arrange
         Long courseId = 1L;
-
         course.setStatus(Status.PUBLISHED);
         when(courseRepositoryMock.findById(courseId)).thenReturn(Optional.of(course));
 
         int position = 1;
-
         String expectedErrorMessage = String.format(
-                "Não é possível adicionar tarefas ao curso '%s' pois seu status é '%s'. Apenas cursos com status 'BUILDING' podem ser modificados.",
+                "It is not possible to add tasks to the course '%s' because its status is '%s'. Only courses with the status 'BUILDING' can be modified.",
                 course.getTitle(),
                 course.getStatus()
         );
 
         // Act & Assert
-        InvalidCourseTaskOperationException exception = assertThrows(InvalidCourseTaskOperationException.class, () -> {
-            courseTaskService.addTaskToCourseAtPosition(courseId, newTask, position);
-        });
-
+        InvalidCourseTaskOperationException exception = assertThrows(InvalidCourseTaskOperationException.class, () ->
+                courseTaskService.addTaskToCourseAtPosition(courseId, newTask, position)
+        );
         assertThat(exception.getMessage()).isEqualTo(expectedErrorMessage);
 
         verify(taskRepositoryMock, never()).save(any(Task.class));
     }
-
 }

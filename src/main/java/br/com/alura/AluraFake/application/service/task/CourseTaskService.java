@@ -5,8 +5,8 @@ import br.com.alura.AluraFake.domain.model.Course;
 import br.com.alura.AluraFake.domain.model.Task;
 import br.com.alura.AluraFake.domain.repository.CourseRepository;
 import br.com.alura.AluraFake.domain.repository.TaskRepository;
-import br.com.alura.AluraFake.exceptionhandler.InvalidCourseTaskOperationException;
-import br.com.alura.AluraFake.exceptionhandler.ResourceNotFoundException;
+import br.com.alura.AluraFake.globalHandler.InvalidCourseTaskOperationException;
+import br.com.alura.AluraFake.globalHandler.ResourceNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,11 +26,11 @@ public class CourseTaskService {
     @Transactional
     public Course addTaskToCourseAtPosition(Long courseId, Task newTask, int position) {
         Course course = courseRepository.findById(courseId)
-                .orElseThrow(() -> new ResourceNotFoundException("Curso não encontrado com ID: " + courseId));
+                .orElseThrow(() -> new ResourceNotFoundException("Course not found with ID: " + courseId));
 
         if (course.getStatus() != Status.BUILDING) {
             throw new InvalidCourseTaskOperationException(
-                    String.format("Não é possível adicionar tarefas ao curso '%s' pois seu status é '%s'. Apenas cursos com status 'BUILDING' podem ser modificados.",
+                    String.format("It is not possible to add tasks to the course '%s' because its status is '%s'. Only courses with the status 'BUILDING' can be modified.",
                             course.getTitle(),
                             course.getStatus())
             );
@@ -49,14 +49,14 @@ public class CourseTaskService {
 
             if (statementExists) {
                 throw new InvalidCourseTaskOperationException(
-                        "O curso já possui uma questão com o enunciado: '" + newTask.getStatement() + "'"
+                        "The course already has a question with the statement: '" + newTask.getStatement() + "'"
                 );
             }
         }
 
         if (position < 1 || position > existingTasks.size() + 1) {
             throw new InvalidCourseTaskOperationException(
-                    "Ordem de tarefa inválida. A ordem deve ser contínua e estar entre 1 e " + (existingTasks.size() + 1) + "."
+                    "Invalid task order. The order must be continuous and between 1 and " + (existingTasks.size() + 1) + "."
             );
         }
 
@@ -78,14 +78,14 @@ public class CourseTaskService {
     @Transactional
     public Course removeTaskFromCourse(Long courseId, Long taskId) {
         Course course = courseRepository.findById(courseId)
-                .orElseThrow(() -> new ResourceNotFoundException("Curso não encontrado com ID: " + courseId));
+                .orElseThrow(() -> new ResourceNotFoundException("Course not found with ID: " + courseId));
 
         Task taskToRemove = taskRepository.findById(taskId)
-                .orElseThrow(() -> new ResourceNotFoundException("Tarefa não encontrada com ID: " + taskId));
+                .orElseThrow(() -> new ResourceNotFoundException("Task not found with ID: " + taskId));
 
         if (taskToRemove.getCourse() == null || !taskToRemove.getCourse().getId().equals(courseId)) {
             String mensagemDeErroFormatada = String.format(
-                    "A tarefa com ID %d não pertence ao curso com ID: %d",
+                    "The task with ID %d does not belong to the course with ID: %d",
                     taskToRemove.getId(),
                     courseId
             );
