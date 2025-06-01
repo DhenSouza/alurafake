@@ -20,6 +20,8 @@ import org.springframework.web.context.request.ServletWebRequest;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.authentication.BadCredentialsException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -338,5 +340,28 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 ProblemType.RESOURCE_NOT_FOUND.getMessage()
         );
         return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler({AuthenticationException.class})
+    public ResponseEntity<ErrorResponse> handleAuthenticationException(AuthenticationException ex, WebRequest request) {
+
+        String detail = "Invalid credentials or authentication failure.";
+        if (ex instanceof BadCredentialsException) {
+            detail = "Invalid email or password.";
+        } else if (ex.getMessage() != null && !ex.getMessage().equalsIgnoreCase("Bad credentials")) {
+            detail = ex.getMessage();
+        }
+
+        String userMessageForClient = ProblemType.AUTHENTICATION_ERROR.getMessage();
+
+        ErrorResponse errorResponse = new ErrorResponse(
+                HttpStatus.UNAUTHORIZED.value(),
+                errorBaseUri + ProblemType.AUTHENTICATION_ERROR.getPath(),
+                ProblemType.AUTHENTICATION_ERROR.getTitle(),
+                detail,
+                ((ServletWebRequest) request).getRequest().getRequestURI(),
+                userMessageForClient
+        );
+        return new ResponseEntity<>(errorResponse, HttpStatus.UNAUTHORIZED);
     }
 }

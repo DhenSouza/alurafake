@@ -5,6 +5,12 @@ import lombok.Getter;
 @Getter
 public enum ProblemType {
 
+    AUTHENTICATION_ERROR(
+            "/authentication-error",
+            "Authentication Failed",
+            "Authentication failed due to invalid credentials or other authentication problem."
+    ),
+
     DEFAULT_USER_MESSAGE_VALIDATION(
             "/invalid-fields",
             "Invalid fields",
