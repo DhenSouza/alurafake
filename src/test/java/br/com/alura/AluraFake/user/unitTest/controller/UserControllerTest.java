@@ -1,4 +1,4 @@
-package br.com.alura.AluraFake.user;
+package br.com.alura.AluraFake.user.unitTest.controller;
 
 import br.com.alura.AluraFake.api.controller.UserController;
 import br.com.alura.AluraFake.api.dto.request.NewUserDTO;
