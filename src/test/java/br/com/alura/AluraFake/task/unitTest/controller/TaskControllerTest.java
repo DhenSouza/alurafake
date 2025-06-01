@@ -5,10 +5,15 @@ import br.com.alura.AluraFake.api.dto.request.*;
 import br.com.alura.AluraFake.application.factory.TaskUseCaseFactory;
 import br.com.alura.AluraFake.application.interfaces.CreateTaskUseCase;
 import br.com.alura.AluraFake.domain.enumeration.Type;
+import br.com.alura.AluraFake.domain.repository.UserRepository;
+import br.com.alura.AluraFake.domain.service.AppUserDetailsService;
 import br.com.alura.AluraFake.exceptionhandler.GlobalExceptionHandler;
 import br.com.alura.AluraFake.exceptionhandler.OptionalInvalidException;
 import br.com.alura.AluraFake.exceptionhandler.ResourceNotFoundException;
 import br.com.alura.AluraFake.exceptionhandler.dto.ProblemType;
+import br.com.alura.AluraFake.security.JwtAuthenticationFilter;
+import br.com.alura.AluraFake.security.JwtTokenUtil;
+import br.com.alura.AluraFake.security.SecurityConfiguration;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -35,15 +40,15 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.doNothing;
 import static org.mockito.BDDMockito.doThrow;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import org.springframework.security.test.context.support.WithMockUser;
 
 @ExtendWith(SpringExtension.class)
 @WebMvcTest(TaskController.class)
-@Import(GlobalExceptionHandler.class)
+@Import({GlobalExceptionHandler.class, SecurityConfiguration.class, JwtTokenUtil.class, JwtAuthenticationFilter.class, AppUserDetailsService.class})
 public class TaskControllerTest {
 
     @Autowired
@@ -57,6 +62,9 @@ public class TaskControllerTest {
 
     @MockBean
     private CreateTaskUseCase createTaskUseCaseMock;
+
+    @MockBean
+    private UserRepository userRepositoryMock;
 
     private final ArgumentCaptor<TaskCreationRequest> captor = ArgumentCaptor.forClass(TaskCreationRequest.class);
 
@@ -87,6 +95,7 @@ public class TaskControllerTest {
 
 
     @Test
+    @WithMockUser(roles = "INSTRUCTOR")
     @DisplayName("POST /task/new com payload válido retorna 200 OK e success=true com o tipo OPEN_TEXT")
     void createNewTask_whenValidOpenTextRequest_shouldReturnOk() throws Exception {
         // Arrange
@@ -113,6 +122,7 @@ public class TaskControllerTest {
 
     @ParameterizedTest
     @MethodSource("invalidRequests")
+    @WithMockUser(roles = "INSTRUCTOR")
     @DisplayName("POST /task/new com payload invalido com o tipo OPEN_TEXT 400 Bad Request")
     void createNewTask_whenInvalidRequest_shouldReturnBadRequest(OpenTextTaskCreationRequest invalid) throws Exception {
         mockMvc.perform(post("/task/new")
@@ -134,6 +144,7 @@ public class TaskControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = "INSTRUCTOR")
     @DisplayName("POST /task/new com payload invalido com o tipo OPEN_TEXT 404 Not Found")
     void createNewTask_whenResourceNotFound_shouldReturnNotFound() throws Exception {
         OpenTextTaskCreationRequest request = new OpenTextTaskCreationRequest(
@@ -153,6 +164,7 @@ public class TaskControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = "INSTRUCTOR")
     @DisplayName("POST /task/new com payload invalido com o tipo OPEN_TEXT retorna 400 Bad Request")
     void createNewTask_whenOptionalInvalidException_shouldReturnBadRequest() throws Exception {
         OpenTextTaskCreationRequest request = new OpenTextTaskCreationRequest(
@@ -170,6 +182,7 @@ public class TaskControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = "INSTRUCTOR")
     @DisplayName("POST /task/new com OPEN_TEXT quando UseCase lança RuntimeException inesperada retorna 500 Internal Server Error\"")
     void createNewTask_whenUnhandledException_shouldReturnInternalError() throws Exception {
         OpenTextTaskCreationRequest request = new OpenTextTaskCreationRequest(
@@ -185,6 +198,32 @@ public class TaskControllerTest {
     }
 
     @Test
+    @DisplayName("POST /task/new com OPEN_TEXT quando usuário é STUDENT retorna 403 Forbidden")
+    @WithMockUser(username = "aluno@example.com", roles = {"STUDENT"})
+    void createNewTask_whenUserIsStudent_shouldReturnForbidden() throws Exception {
+        // Arrange
+        OpenTextTaskCreationRequest request = new OpenTextTaskCreationRequest(
+                1L,
+                "Tentativa de criação por aluno.",
+                1,
+                Type.OPEN_TEXT
+        );
+
+        // Act
+        ResultActions resultActions = mockMvc.perform(post("/task/new")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)));
+
+        // Assert
+        resultActions
+                .andExpect(status().isForbidden());
+
+        verify(createTaskUseCaseMock, never()).execute(any(TaskCreationRequest.class));
+        verify(useCaseFactory, never()).getUseCase(any(Type.class));
+    }
+
+    @Test
+    @WithMockUser(roles = "INSTRUCTOR")
     @DisplayName("POST /task/new com payload válido retorna 200 OK e success=true com SINGLE_CHOICE")
     void createNewTask_whenValidSingleChoiceRequest_shouldReturnOk() throws Exception {
         // Arrange
@@ -223,6 +262,7 @@ public class TaskControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = "INSTRUCTOR")
     @DisplayName("POST /task/new com SINGLE_CHOICE e NENHUMA opção correta (regra de negócio) retorna 400 Bad Request")
     void createNewTask_whenSingleChoiceHasZeroCorrectOptions_RuleViolation_shouldReturnBadRequest() throws Exception {
         // Arrange
@@ -261,6 +301,7 @@ public class TaskControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = "INSTRUCTOR")
     @DisplayName("POST /task/new com SINGLE_CHOICE e com menos de 2 escolhas (regra de negócio) retorna 400 Bad Request")
     void createNewTask_whenSingleChoiceHasLessThanThree_RuleViolation_shouldReturnBadRequest() throws Exception {
         // Arrange
@@ -297,6 +338,7 @@ public class TaskControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = "INSTRUCTOR")
     @DisplayName("POST /task/new com SINGLE_CHOICE e courseId inexistente (UseCase lança Exceção) retorna 404 Not Found")
     void createNewTask_whenSingleChoiceAndCourseIdNotFound_shouldReturnNotFound() throws Exception {
         // Arrange
@@ -335,6 +377,7 @@ public class TaskControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = "INSTRUCTOR")
     @DisplayName("POST /task/new com SINGLE_CHOICE quando UseCase lança RuntimeException inesperada retorna 500 Internal Server Error")
     void createNewTask_whenSingleChoiceAndUseCaseThrowsUnhandledRuntimeException_shouldReturnInternalServerError() throws Exception {
         // Arrange
@@ -368,8 +411,34 @@ public class TaskControllerTest {
                 .andExpect(jsonPath("$.instance").value("/task/new"));
     }
 
+    @Test
+    @DisplayName("POST /task/new com SINGLE_CHOICE quando usuário é STUDENT retorna 403 Forbidden")
+    @WithMockUser(username = "aluno.teste@example.com", roles = {"STUDENT"})
+    void createNewTask_whenSingleChoiceRequestAndUserIsStudent_shouldReturnForbidden() throws Exception {
+        // Arrange
+        SingleChoiceTaskCreationRequest singleChoiceRequestPayload = new SingleChoiceTaskCreationRequest(
+                2L,
+                "Qual é a capital da França? (Tentativa por Aluno)",
+                1,
+                Type.SINGLE_CHOICE,
+                defaultSingleChoiceOptionsValid()
+        );
+        // Act
+        ResultActions resultActions = mockMvc.perform(post("/task/new")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(singleChoiceRequestPayload)));
+
+        // Assert
+        resultActions
+                .andExpect(status().isForbidden());
+
+        verify(createTaskUseCaseMock, never()).execute(any(TaskCreationRequest.class));
+        verify(useCaseFactory, never()).getUseCase(any(Type.class));
+    }
+
 
     @Test
+    @WithMockUser(roles = "INSTRUCTOR")
     @DisplayName("POST /task/new com payload válido para MULTIPLE_CHOICE retorna 200 OK e success=true")
     void createNewTask_whenValidMultipleChoiceRequest_shouldReturnOk() throws Exception {
         // Arrange
@@ -402,6 +471,7 @@ public class TaskControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = "INSTRUCTOR")
     @DisplayName("POST /task/new com MULTIPLE_CHOICE e menos de duas opções corretas retorna 400 Bad Request")
     void createNewTask_whenMultipleChoiceHasNotEnoughCorrectOptions_shouldReturnBadRequest() throws Exception {
         // Arrange
@@ -440,6 +510,7 @@ public class TaskControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = "INSTRUCTOR")
     @DisplayName("POST /task/new com MULTIPLE_CHOICE e nenhuma opção incorreta retorna 400 Bad Request")
     void createNewTask_whenMultipleChoiceHasNoIncorrectOption_shouldReturnBadRequest() throws Exception {
         // Arrange
@@ -479,6 +550,7 @@ public class TaskControllerTest {
 
 
     @Test
+    @WithMockUser(roles = "INSTRUCTOR")
     @DisplayName("POST /task/new com MULTIPLE_CHOICE e poucas opções (< 3) retorna 400 Bad Request (Bean Validation)")
     void createNewTask_whenMultipleChoiceHasTooFewOptions_shouldReturnBadRequest_BeanValidation() throws Exception {
         // Arrange
@@ -517,6 +589,7 @@ public class TaskControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = "INSTRUCTOR")
     @DisplayName("POST /task/new com MULTIPLE_CHOICE quando CourseId não existe retorna 404 Not Found")
     void createNewTask_whenMultipleChoiceAndCourseNotFound_shouldReturnNotFound() throws Exception {
         // Arrange
@@ -553,6 +626,7 @@ public class TaskControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = "INSTRUCTOR")
     @DisplayName("POST /task/new com MULTIPLE_CHOICE quando UseCase lança RuntimeException retorna 500 Internal Server Error")
     void createNewTask_whenMultipleChoiceAndUseCaseThrowsUnhandledRuntimeException_shouldReturnInternalServerError() throws Exception {
         // Arrange
@@ -583,5 +657,29 @@ public class TaskControllerTest {
                 .andExpect(jsonPath("$.detail").value(ProblemType.UNEXPECTED_ERROR.getMessage()))
                 .andExpect(jsonPath("$.userMessage").value(ProblemType.UNEXPECTED_ERROR.getMessage()))
                 .andExpect(jsonPath("$.instance").value("/task/new"));
+    }
+
+    @Test
+    @DisplayName("POST /task/new com MULTIPLE_CHOICE quando usuário é STUDENT retorna 403 Forbidden")
+    @WithMockUser(username = "estudante.curioso@example.com", roles = {"STUDENT"}) // <<< SIMULA UM USUÁRIO COM ROLE STUDENT
+    void createNewTask_whenMultipleChoiceRequestAndUserIsStudent_shouldReturnForbidden() throws Exception {
+        // Arrange
+        MultipleChoiceTaskCreationRequest multipleChoiceRequestPayload = new MultipleChoiceTaskCreationRequest(
+                10L,
+                "Quais são frameworks backend? (Tentativa por Aluno)",
+                1,
+                Type.MULTIPLE_CHOICE,
+                defaultMultipleChoiceOptionsValid()
+        );
+
+        // Act
+        ResultActions resultActions = mockMvc.perform(post("/task/new")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(multipleChoiceRequestPayload)));
+
+        // Assert
+        resultActions
+                .andExpect(status().isForbidden());
+        verify(createTaskUseCaseMock, never()).execute(any(TaskCreationRequest.class));
     }
 }
