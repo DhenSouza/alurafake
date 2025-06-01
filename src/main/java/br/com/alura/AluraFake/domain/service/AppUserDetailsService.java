@@ -21,7 +21,7 @@ public class AppUserDetailsService implements UserDetailsService {
     private UserRepository userRepository;
 
     @Override
-    @Transactional(readOnly = true) // Boa prática para métodos de leitura
+    @Transactional(readOnly = true)
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
         User applicationUser = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("User with email '" + email + "' not found."));
