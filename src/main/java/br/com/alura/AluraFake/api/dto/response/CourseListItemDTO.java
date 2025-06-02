@@ -12,6 +12,8 @@ public class CourseListItemDTO implements Serializable {
     private String description;
     private Status status;
 
+    public CourseListItemDTO(){}
+
     public CourseListItemDTO(Course course) {
         this.id = course.getId();
         this.title = course.getTitle();

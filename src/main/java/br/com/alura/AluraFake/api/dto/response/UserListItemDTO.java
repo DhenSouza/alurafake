@@ -11,6 +11,8 @@ public class UserListItemDTO implements Serializable {
     private String email;
     private Role role;
 
+    public UserListItemDTO(){}
+
     public UserListItemDTO(User user) {
         this.name = user.getName();
         this.email = user.getEmail();

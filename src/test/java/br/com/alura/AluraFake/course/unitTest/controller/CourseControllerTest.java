@@ -1,4 +1,4 @@
-package br.com.alura.AluraFake.course.unitTest;
+package br.com.alura.AluraFake.course.unitTest.controller;
 
 import br.com.alura.AluraFake.api.controller.CourseController;
 import br.com.alura.AluraFake.api.dto.request.NewCourseDTO;
