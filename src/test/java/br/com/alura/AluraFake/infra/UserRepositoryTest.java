@@ -1,4 +1,4 @@
-package br.com.alura.AluraFake.user.unitTest.infra;
+package br.com.alura.AluraFake.infra;
 
 import br.com.alura.AluraFake.domain.enumeration.Role;
 import br.com.alura.AluraFake.domain.model.User;
