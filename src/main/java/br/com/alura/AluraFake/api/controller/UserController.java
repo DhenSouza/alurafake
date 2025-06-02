@@ -29,14 +29,13 @@ public class UserController {
     public ResponseEntity<?> newStudent(@RequestBody @Valid NewUserDTO newUser) {
         User createdUser = this.userService.createUser(newUser);
 
-        // TODO caso queira utilizar no restorno
-        /*URI location = ServletUriComponentsBuilder
+        URI location = ServletUriComponentsBuilder
                 .fromCurrentRequest()
                 .path("/{id}")
                 .buildAndExpand(createdUser.getId())
-                .toUri();*/
+                .toUri();
 
-        return ResponseEntity.status(HttpStatus.CREATED).build();
+        return ResponseEntity.created(location).body(new UserListItemDTO(createdUser));
     }
 
     @GetMapping("/all")

@@ -13,6 +13,14 @@ public class NewUserDTO {
     @NotBlank
     @Email
     private String email;
+
+    public NewUserDTO(String name, String email, Role role, String password) {
+        this.name = name;
+        this.email = email;
+        this.role = role;
+        this.password = password;
+    }
+
     @NotNull
     private Role role;
     @Pattern(regexp = "^$|^.{6}$", message = "Password must be exactly 6 characters long if provided")

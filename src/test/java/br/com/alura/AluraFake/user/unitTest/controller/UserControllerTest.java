@@ -24,16 +24,19 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
 
 import java.util.Arrays;
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -136,19 +139,46 @@ class UserControllerTest {
 
     @Test
     @WithMockUser(roles = "INSTRUCTOR")
-    @DisplayName("POST /user/new: Should return 201 Created when user request is valid")
-    void newUser_whenRequestIsValid_shouldReturnCreated() throws Exception {
-        NewUserDTO newUserDTO = new NewUserDTO();
-        newUserDTO.setEmail("caio.bugorin@alura.com.br");
-        newUserDTO.setName("Caio Bugorin");
-        newUserDTO.setRole(Role.INSTRUCTOR);
+    @DisplayName("POST /user/new: Deve criar novo usuário com DTO válido e retornar Status 201 Created com Location e corpo")
+    void newUser_whenRequestIsValid_shouldReturnCreatedWithLocationAndBody() throws Exception {
+        // Arrange
+        NewUserDTO newUserDTO = new NewUserDTO(
+                "Caio Bugorin Valido",
+                "caio.valido@alura.com.br",
+                Role.INSTRUCTOR,
+                "123456"
+        );
 
-        when(userRepositoryMock.existsByEmail(newUserDTO.getEmail())).thenReturn(false);
+        User userReturnedByService = new User(
+                newUserDTO.getName(),
+                newUserDTO.getEmail(),
+                newUserDTO.getRole(),
+                "hashedPasswordValue"
+        );
+        userReturnedByService.setId(123L);
 
-        mockMvc.perform(post("/user/new")
+        when(userServiceMock.createUser(any(NewUserDTO.class))).thenReturn(userReturnedByService);
+
+        // Act
+        MvcResult result = mockMvc.perform(post("/user/new")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(newUserDTO)))
-                .andExpect(status().isCreated());
+                .andExpect(status().isCreated())
+                .andExpect(header().exists(HttpHeaders.LOCATION))
+                .andExpect(header().string(HttpHeaders.LOCATION, "http://localhost/user/new/" + userReturnedByService.getId())) // Ajuste o path base se necessário
+                .andReturn();
+
+        // Assert
+        verify(userServiceMock).createUser(newUserDTOCaptor.capture());
+        NewUserDTO capturedDTO = newUserDTOCaptor.getValue();
+        assertThat(capturedDTO.getEmail()).isEqualTo(newUserDTO.getEmail());
+        assertThat(capturedDTO.getName()).isEqualTo(newUserDTO.getName());
+        assertThat(capturedDTO.getPassword()).isEqualTo("123456");
+
+        UserListItemDTO responseDto = objectMapper.readValue(result.getResponse().getContentAsString(), UserListItemDTO.class);
+        assertThat(responseDto.getEmail()).isEqualTo(userReturnedByService.getEmail());
+        assertThat(responseDto.getName()).isEqualTo(userReturnedByService.getName());
+        assertThat(responseDto.getRole()).isEqualTo(userReturnedByService.getRole());
     }
 
     @Test
